@@ -1,4 +1,5 @@
-import React, {useEffect, useRef, useState} from 'react';
+/* eslint-disable react-native/no-inline-styles */
+import React, {useEffect, useMemo, useRef, useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -6,13 +7,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  AppState,
+  Animated,
   PanResponder,
+  FlatList,
 } from 'react-native';
-import {useDispatch, useSelector} from 'react-redux';
+import {useDispatch, useSelector, shallowEqual} from 'react-redux';
 import {Icon} from 'react-native-elements';
 import Slider from '@react-native-community/slider';
-
 import {
   PAUSE,
   NEXT_SONG,
@@ -23,29 +24,44 @@ import {
   SHUFFLE_MODE,
   PROGRESS,
 } from '../redux/actions';
-import TrackPlayer, {
-  useTrackPlayerEvents,
-  TrackPlayerEvents,
-} from 'react-native-track-player';
+import TrackPlayer from 'react-native-track-player';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
+const screenHeight = Dimensions.get('window').height;
 const screenWidth = Dimensions.get('window').width;
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 const PlayerScreen = ({route, navigation}) => {
   const dispatch = useDispatch();
   const {
     playList,
     currentSong,
+    currentIndex,
     isPlaying,
     progressTime,
     totalLength,
     shuffleMode,
     playMode,
-  } = useSelector(state => state);
-  const [seekValue, setSeekValue] = useState(progressTime);
+  } = useSelector(state => state, shallowEqual);
 
   const continuePlayingRef = useRef(false);
-  const isPlayerInitialized = useRef(false);
-  const [currentPosition, setCurrentPosition] = useState(0);
+  const flatListRef = useRef();
+  const [songSwitching, setSongSwitching] = useState(false); // Add songSwitching flag
+  const playerOffsetX = useRef(new Animated.Value(0)).current;
+  const playerPosition = useRef(new Animated.Value(0)).current;
+
+  const togglePlayback = useCallback(() => dispatch({type: PAUSE}), [dispatch]);
+  const fnextSong = useCallback(() => dispatch({type: NEXT_SONG}), [dispatch]);
+  const fprevSong = useCallback(() => dispatch({type: LAST_SONG}), [dispatch]);
+  const toggleShuffle = useCallback(
+    () => dispatch({type: SHUFFLE_MODE}),
+    [dispatch],
+  );
+  const toggleRepeat = useCallback(
+    () => dispatch({type: SWITCH_MODE}),
+    [dispatch],
+  );
+  const pan = useRef(new Animated.ValueXY()).current;
 
   useEffect(() => {
     if (route.params && route.params.continue) {
@@ -55,164 +71,189 @@ const PlayerScreen = ({route, navigation}) => {
     if (route.params && route.params.musicData) {
       const {musicData, song} = route.params;
       dispatch({type: POINT_SONG, playList: musicData, song});
+      dispatch({type: PROGRESS, progressTime: 0}); // Reset progress time when switching songs
     }
   }, [route.params]);
 
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onPanResponderRelease: (evt, gestureState) => {
-      if (gestureState.dx > 50) {
-        prevSong();
-      } else if (gestureState.dx < -50) {
-        nextSong();
-      } else if (gestureState.dy > 50) {
-        navigation.goBack();
+  useEffect(() => {
+    if (flatListRef.current) {
+      flatListRef.current.scrollToIndex({
+        animated: true,
+        index: currentIndex,
+      });
+    }
+  }, [currentIndex]);
+  const handleScroll = useCallback(
+    event => {
+      const newIndex = Math.floor(
+        event.nativeEvent.contentOffset.x / screenWidth,
+      );
+      if (!songSwitching && newIndex !== currentIndex) {
+        setSongSwitching(true); // Set songSwitching flag to true
+        const diff = Math.abs(newIndex - currentIndex);
+        let songSwitched = false;
+
+        dispatch({type: newIndex > currentIndex ? NEXT_SONG : LAST_SONG});
+        setTimeout(() => {
+          setSongSwitching(false); // Set songSwitching flag to false after the song switch
+        }, 500);
       }
     },
-  });
-
-  useEffect(() => {
-    async function setupPlayer() {
-      console.log('setup player');
-      await TrackPlayer.setupPlayer();
-      isPlayerInitialized.current = true;
+    [currentIndex, songSwitching],
+  );
+  const nextSong = useCallback(() => {
+    if (!songSwitching) {
+      // Check if songSwitching flag is false
+      setSongSwitching(true); // Set songSwitching flag to true
+      dispatch({type: NEXT_SONG});
+      setTimeout(() => {
+        setSongSwitching(false); // Set songSwitching flag to false after the song switch
+      }, 500);
     }
-    setupPlayer();
-  }, []);
+  }, [songSwitching]);
 
-  useEffect(() => {
-    const setupPlayer = async () => {
-      try {
-        if (!continuePlayingRef.current) {
-          await TrackPlayer.reset();
-        }
+  const prevSong = useCallback(() => {
+    if (!songSwitching) {
+      // Check if songSwitching flag is false
+      setSongSwitching(true); // Set songSwitching flag to true
+      dispatch({type: LAST_SONG});
+      setTimeout(() => {
+        setSongSwitching(false); // Set songSwitching flag to false after the song switch
+      }, 500);
+    }
+  }, [songSwitching]);
 
-        if (currentSong) {
-          await TrackPlayer.add({
-            id: currentSong.id,
-            url: currentSong.audioUrl,
-            title: currentSong.title,
-            artist: currentSong.artist,
-            artwork: currentSong.albumArtUrl,
-          });
+  const seek = useCallback(
+    async value => {
+      await TrackPlayer.seekTo(value);
+    },
+    [dispatch],
+  );
 
-          if (!continuePlayingRef.current) {
-            TrackPlayer.play();
-          }
-        }
-      } catch (error) {
-        console.error('Error setting up player:', error);
-      }
-    };
-
-    setupPlayer();
-
-    const progressInterval = setInterval(async () => {
-      const currentPosition = await TrackPlayer.getPosition();
-      dispatch({type: PROGRESS, progressTime: currentPosition});
-
-      const duration = await TrackPlayer.getDuration();
-      dispatch({type: 'SET_LENGTH', totalLength: duration});
-    }, 1000);
-
-    return () => {
-      clearInterval(progressInterval);
-      continuePlayingRef.current = false;
-    };
-  }, [currentSong]);
-
-  useEffect(() => {
-    isPlaying ? TrackPlayer.play() : TrackPlayer.pause();
-  }, [isPlaying]);
-
-  const togglePlayback = () => {
-    dispatch({type: PAUSE});
-  };
-
-  const nextSong = () => {
-    dispatch({type: NEXT_SONG});
-  };
-
-  const prevSong = () => {
-    dispatch({type: LAST_SONG});
-  };
-
-  const seek = async value => {
-    dispatch({type: PROGRESS, progressTime: value});
-    await TrackPlayer.seekTo(value);
-  };
-
-  const toggleShuffle = () => {
-    dispatch({type: SHUFFLE_MODE});
-  };
-
-  const toggleRepeat = () => {
-    dispatch({type: SWITCH_MODE});
-  };
+  const renderItem = useCallback(({item}) => <PlayerItem item={item} />, []);
 
   if (!currentSong) {
     return null;
   }
 
   return (
-    <View style={styles.container} {...panResponder.panHandlers}>
-      <Image source={{uri: currentSong.albumArtUrl}} style={styles.albumArt} />
-      <Text style={styles.title}>{currentSong.title}</Text>
-      <Text style={styles.artist}>{currentSong.artist}</Text>
-      <Slider
-        style={styles.slider}
-        minimumValue={0}
-        maximumValue={totalLength}
-        value={progressTime}
-        minimumTrackTintColor="#1DB954"
-        maximumTrackTintColor="#FFFFFF"
-        thumbTintColor="#1DB954"
-        onValueChange={value => seek(value)}
+    <Animated.View
+      style={[styles.container, {transform: [{translateY: playerPosition}]}]}>
+      <AnimatedFlatList
+        ref={flatListRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        overScrollMode="never"
+        getItemLayout={(data, index) => ({
+          length: screenWidth,
+          offset: screenWidth * index,
+          index,
+        })}
+        onMomentumScrollEnd={Animated.event(
+          [{nativeEvent: {contentOffset: {x: playerOffsetX}}}],
+          {useNativeDriver: true, listener: event => handleScroll(event)},
+        )}
+        scrollEventThrottle={16}
+        data={playList}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
+        renderItem={renderItem}
+        initialScrollIndex={currentIndex}
       />
-      <View style={styles.buttons}>
-        <TouchableOpacity onPress={toggleShuffle}>
-          <Icon
-            name={shuffleMode ? 'shuffle' : 'shuffle-disabled'}
-            type="material-community"
-            color="#FFFFFF"
-            size={30}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={prevSong}>
-          <Icon
-            name="skip-previous"
-            type="material"
-            color="#FFFFFF"
-            size={40}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={togglePlayback}>
-          <Icon
-            name={isPlaying ? 'pause' : 'play-arrow'}
-            type="material"
-            color="#FFFFFF"
-            size={50}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={nextSong}>
-          <Icon name="skip-next" type="material" color="#FFFFFF" size={40} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={toggleRepeat}>
-          <Icon
-            name={playMode === 'loop' ? 'repeat' : 'repeat-disabled'}
-            type="material-community"
-            color="#FFFFFF"
-            size={30}
-          />
-        </TouchableOpacity>
+      <View style={styles.body}>
+        <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+          {currentSong.title}
+        </Text>
+        <Text style={styles.artist} numberOfLines={1} ellipsizeMode="tail">
+          {currentSong.artists?.data[0]?.name}
+        </Text>
+        <Slider
+          style={[
+            styles.slider,
+            {flexDirection: 'row', justifyContent: 'space-between'},
+          ]}
+          minimumValue={0}
+          maximumValue={totalLength}
+          value={progressTime}
+          minimumTrackTintColor="#1DB954"
+          maximumTrackTintColor="#FFFFFF"
+          thumbTintColor="#1DB954"
+          onSlidingComplete={value =>
+            seek(value).then(() =>
+              dispatch({type: PROGRESS, progressTime: value}),
+            )
+          }
+        />
+        <View style={styles.timeContainer}>
+          <Text style={[styles.time, {marginRight: 10}]}>
+            {Math.floor(progressTime / 60)}:
+            {(progressTime % 60).toFixed(0).padStart(2, '0')}
+          </Text>
+          <Text style={[styles.time, {marginLeft: 10}]}>
+            {Math.floor(totalLength / 60)}:
+            {(totalLength % 60).toFixed(0).padStart(2, '0')}
+          </Text>
+        </View>
+        <View style={styles.buttons}>
+          <TouchableOpacity onPress={toggleShuffle}>
+            <Icon
+              name={shuffleMode ? 'shuffle' : 'shuffle-disabled'}
+              type="material-community"
+              color="#FFFFFF"
+              size={30}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={prevSong}>
+            <Icon
+              name="skip-previous"
+              type="material"
+              color="#FFFFFF"
+              size={40}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={togglePlayback}>
+            <Icon
+              name={isPlaying ? 'pause' : 'play-arrow'}
+              type="material"
+              color="#FFFFFF"
+              size={50}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={nextSong}>
+            <Icon name="skip-next" type="material" color="#FFFFFF" size={40} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={toggleRepeat}>
+            <Icon
+              name={
+                playMode === 'noloop'
+                  ? 'repeat-off'
+                  : playMode === 'loop'
+                  ? 'repeat'
+                  : 'repeat-once'
+              }
+              type="material-community"
+              color="#FFFFFF"
+              size={30}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
-      <Text style={styles.time}>
-        {Math.floor(progressTime / 60)}:
-        {(progressTime % 60).toFixed(0).padStart(2, '0')} /{' '}
-        {Math.floor(totalLength / 60)}:
-        {(totalLength % 60).toFixed(0).padStart(2, '0')}
-      </Text>
-    </View>
+    </Animated.View>
+  );
+};
+
+const PlayerItem = ({item}) => {
+  const screenWidth = Dimensions.get('window').width;
+  return (
+    <Animated.View
+      style={{
+        width: screenWidth,
+        paddingHorizontal: screenWidth * 0.1,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+      <Image source={{uri: item.cover.url}} style={styles.albumArt} />
+    </Animated.View>
   );
 };
 
@@ -224,36 +265,50 @@ const styles = StyleSheet.create({
     backgroundColor: '#121212',
   },
   albumArt: {
-    width: screenWidth * 0.8,
-    height: screenWidth * 0.8,
+    width: '100%',
+    height: Dimensions.get('window').width * 0.8,
     resizeMode: 'contain',
+    marginBottom: -50,
+    marginTop: -60,
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFF',
-    marginTop: 10,
+    marginTop: 10, // Add top margin
   },
   artist: {
     fontSize: 16,
     color: '#FFF',
-    marginTop: 5,
+    marginTop: 5, // Add top margin
   },
   slider: {
-    width: screenWidth * 0.8,
     marginTop: 20,
+    width: Dimensions.get('window').width * 0.8,
   },
   buttons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 20,
-    width: screenWidth * 0.8,
+    marginTop: 30,
+    width: Dimensions.get('window').width * 0.8,
   },
   time: {
-    paddingTop: 20,
     color: '#fff',
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 15,
+    alignItems: 'center',
+  },
+
+  body: {
+    flex: 1,
+    position: 'relative',
+    marginBottom: 100,
+    justifyContent: 'space-between', // or 'space-between'
   },
 });
 
-export default PlayerScreen;
+export default React.memo(PlayerScreen);

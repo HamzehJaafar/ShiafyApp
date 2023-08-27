@@ -27,7 +27,7 @@ export default function (state, action) {
       currentSong: null,
       progressTime: 0,
       shuffleMode: false,
-      playMode: 'noloop',
+      playMode: 'loop',
       isPlaying: false,
       isChanging: false,
       totalLength: 1,
@@ -50,6 +50,7 @@ export default function (state, action) {
         playList: action.playList,
         currentSong: action.playList[action.song],
         currentIndex: action.song,
+        progressTime: 0,
         isPlaying: true,
       };
 

@@ -12,6 +12,7 @@ export const LOVE = 'LOVE';
 export const LOCAL = 'LOCAL';
 export const SHUFFLE_MODE = 'SHUFFLE_MODE';
 export const CHANGE = 'CHANGE';
+export const SET_LENGTH = 'SET_LENGTH';
 
 export const pause = () => {
   return {

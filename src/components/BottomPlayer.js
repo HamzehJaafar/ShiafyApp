@@ -1,9 +1,15 @@
 import React, {useEffect} from 'react';
-import {View, Text, TouchableOpacity, Image, SafeAreaView} from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  SafeAreaView,
+  ActivityIndicator,
+} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {Icon} from 'react-native-elements';
 import {useSelector, useDispatch} from 'react-redux';
-import TrackPlayer from 'react-native-track-player';
 import {playPrevious, playNext, togglePlay} from '../playerFunctions';
 
 const BottomPlayer = () => {
@@ -16,6 +22,8 @@ const BottomPlayer = () => {
     currentIndex,
     progressTime,
     totalLength,
+    loading,
+    error,
   } = useSelector(state => state);
 
   if (!currentSong) {
@@ -24,6 +32,8 @@ const BottomPlayer = () => {
 
   const styles = {
     container: {
+      flex: 1,
+      backgroundColor: 'rgb(4,4,4)',
       flexDirection: 'row',
       alignItems: 'center',
       padding: 10,
@@ -60,41 +70,49 @@ const BottomPlayer = () => {
       alignItems: 'center',
     },
   };
-
   return (
     <SafeAreaView>
       <TouchableOpacity
         onPress={() => navigation.navigate('Player', {continue: true})}>
         <View style={styles.container}>
           <View style={styles.progressBar} />
-          <Image
-            source={{uri: currentSong.albumArtUrl}}
-            style={styles.albumArt}
-          />
-          <View style={styles.songInfo}>
-            <Text style={styles.title}>{currentSong.title}</Text>
-            <Text style={styles.author}>{currentSong.artist}</Text>
-          </View>
-          <View style={styles.controls}>
-            <Icon
-              name="skip-previous"
-              type="material"
-              color="white"
-              onPress={() => playPrevious(currentIndex, playList, dispatch)}
-            />
-            <Icon
-              name={isPlaying ? 'pause' : 'play-arrow'}
-              type="material"
-              color="white"
-              onPress={() => togglePlay(isPlaying, dispatch)}
-            />
-            <Icon
-              name="skip-next"
-              type="material"
-              color="white"
-              onPress={() => playNext(currentIndex, playList, dispatch)}
-            />
-          </View>
+          {loading ? (
+            <ActivityIndicator size="large" color="#00ff00" />
+          ) : (
+            <>
+              <Image
+                source={{uri: currentSong.cover.url}}
+                style={styles.albumArt}
+              />
+              <View style={styles.songInfo}>
+                <Text style={styles.title}>{currentSong.title}</Text>
+                <Text style={styles.author}>
+                  {currentSong.artists?.data[0]?.name}
+                </Text>
+              </View>
+              {error && <Text>Error loading song</Text>}
+              <View style={styles.controls}>
+                <Icon
+                  name="skip-previous"
+                  type="material"
+                  color="white"
+                  onPress={() => playPrevious(dispatch)}
+                />
+                <Icon
+                  name={isPlaying ? 'pause' : 'play-arrow'}
+                  type="material"
+                  color="white"
+                  onPress={() => togglePlay(isPlaying, dispatch)}
+                />
+                <Icon
+                  name="skip-next"
+                  type="material"
+                  color="white"
+                  onPress={() => playNext(dispatch)}
+                />
+              </View>
+            </>
+          )}
         </View>
       </TouchableOpacity>
     </SafeAreaView>
