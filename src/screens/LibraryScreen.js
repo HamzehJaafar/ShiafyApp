@@ -1,20 +1,20 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet, FlatList} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import useFetchData from '../useFetchData';
 import {Icon, Image} from 'react-native-elements';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
+
 const LibraryScreen = () => {
   const navigation = useNavigation();
-  const {likedSongs, likedSongsLoading} = useFetchData();
+  const { likedSongs, likedSongsLoading } = useFetchData();
+  const { privatePlaylists, privatePlaylistsLoading } = useFetchData();
 
   let songs = [];
   if (likedSongs?.data) {
     songs = likedSongs?.data.map(item => item.song);
   }
-
-  console.log('songs', songs);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -25,37 +25,63 @@ const LibraryScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        style={styles.section}
-        onPress={() => {
-          navigation.navigate('Playlist', {
-            music: songs,
-            playlistTitle: 'Your Likes',
-          });
-        }}>
-        <View style={styles.sectionLeft}>
-          <Image
-            source={require('../../assets/images/companylogo.png')}
-            style={styles.sectionImage}
-          />
-          <View style={styles.sectionTextContainer}>
-            <Text style={styles.sectionTitle}>Likes</Text>
-            <Text style={styles.sectionSubtitle}>
-              {likedSongsLoading
-                ? 'Loading...'
-                : `${likedSongs.data.length} songs`}
-            </Text>
-          </View>
-        </View>
-        <Icon
-          style={styles.sectionIcon}
-          name="keyboard-arrow-right"
-          color="#bbb"
-        />
-      </TouchableOpacity>
+      <FlatList
+        data={[{ type: 'likedSongs', data: songs }, ...privatePlaylists]}
+        renderItem={({ item }) => {
+          if (item.type === 'likedSongs') {
+            return (
+              <TouchableOpacity
+                style={styles.section}
+                onPress={() => {
+                  navigation.navigate('Playlist', {
+                    music: item.data,
+                    playlistTitle: 'Your Likes',
+                  });
+                }}>
+                <View style={styles.sectionLeft}>
+                  <Image source={require('../../assets/images/companylogo.png')} style={styles.sectionImage} />
+                  <View style={styles.sectionTextContainer}>
+                    <Text style={styles.sectionTitle}>Likes</Text>
+                    <Text style={styles.sectionSubtitle}>
+                      {likedSongsLoading ? 'Loading...' : `${item.data.length} songs`}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          } else {
+            return (
+              <TouchableOpacity
+                style={styles.section}
+                onPress={() => {
+                  navigation.navigate('Playlist', {
+                    music: item.songs,
+                    playlistTitle: item.title,
+                  });
+                }}>
+                <View style={styles.sectionLeft}>
+                  <Image
+                    source={item.coverPhoto ? { uri: item.coverPhoto } : require('../../assets/images/companylogo.png')}
+                    style={styles.sectionImage}
+                  />
+                  <View style={styles.sectionTextContainer}>
+                    <Text style={styles.sectionTitle}>{item.title}</Text>
+                    <Text style={styles.sectionSubtitle}>
+                      {item.songs.length} songs
+                    </Text>
+                  </View>
+                </View>
+                <Icon style={styles.sectionIcon} name="keyboard-arrow-right" color="#bbb" />
+              </TouchableOpacity>
+            );
+          }
+        }}
+        keyExtractor={(item, index) => (item.type ? item.type : item.id.toString())}
+      />
     </SafeAreaView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

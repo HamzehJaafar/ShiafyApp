@@ -1,20 +1,19 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   Image,
   TouchableOpacity,
-  TextInput,
   FlatList,
 } from 'react-native';
 import MusicItem from '../components/MusicItem';
-import {useNavigation} from '@react-navigation/native';
-import {Icon} from 'react-native-elements';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { Icon } from 'react-native-elements';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const PlaylistScreen = ({route}) => {
-  const {music, playlistTitle} = route.params;
+const PlaylistScreen = ({ route }) => {
+  const { music, playlistTitle } = route.params;
   const navigation = useNavigation();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,42 +22,48 @@ const PlaylistScreen = ({route}) => {
     navigation.goBack();
   };
 
-  // Filter songs based on search term
   const filteredSongs = music.filter(song =>
     song.title?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const onClickLike = event => {
-    console.log(event);
-  };
+  const coverImage = filteredSongs[0]?.cover || null;
 
-  return (
-    <SafeAreaView style={styles.container}>
+  console.log(filteredSongs[0]?.cover)
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      <TouchableOpacity onPress={handleBackButton} style={styles.backButton}>
+        <Icon name="arrow-back" color="#fff" size={28} />
+      </TouchableOpacity>
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBackButton} style={styles.backButton}>
-          <Icon name="arrow-back" color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.playlistTitle}>{playlistTitle}</Text>
-        <View style={styles.searchContainer}>
-          <Icon
-            name="search"
-            type="font-awesome"
-            color="#aaa"
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search..."
-            placeholderTextColor="#aaa"
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-          />
+        {coverImage.url && <Image source={{uri: coverImage.url}} style={styles.coverImage} />}
+        <View style={styles.playlistInfo}>
+          <Text style={styles.playlistTitle}>{playlistTitle}</Text>
+          <Text style={styles.trackInfo}>
+            playlist - {music.length} tracks
+          </Text>
+        </View>
+        <View style={styles.playControls}>
+          <TouchableOpacity>
+            <Icon
+              name={'shuffle'}
+              type="material"
+              color="#FFFFFF"
+              size={20}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.playButton}>
+            <Icon name="play-arrow" type="material" color="#121212" size={30} />
+          </TouchableOpacity>
         </View>
       </View>
+    </View>
+  );
+  return (
+    <SafeAreaView style={styles.container}>
       <FlatList
         data={filteredSongs}
         keyExtractor={item => item.id}
-        renderItem={({item, index}) => (
+        renderItem={({ item, index }) => (
           <MusicItem
             id={item.id}
             title={item.title}
@@ -66,9 +71,9 @@ const PlaylistScreen = ({route}) => {
             albumArt={item.cover}
             musicData={music}
             songIndex={index}
-            onFavorite={onClickLike}
           />
         )}
+        ListHeaderComponent={renderHeader}
       />
     </SafeAreaView>
   );
@@ -79,45 +84,55 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#121212',
   },
+  headerContainer: {
+    backgroundColor: '#1b1b1b',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 10,
+    marginTop: 10,
   },
   backButton: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    zIndex: 1,
-  },
-  headerImage: {
-    width: '100%',
-    height: 200,
-  },
-  playlistTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginVertical: 10,
-  },
-
-  searchContainer: {
-    flexDirection: 'row',
-    height: 40,
-    width: '90%',
-    backgroundColor: '#1b1b1b',
-    borderRadius: 25,
-    paddingHorizontal: 10,
-    alignItems: 'center',
+    alignSelf: 'flex-start',
     marginBottom: 10,
   },
-  searchIcon: {
-    marginRight: 10,
+  coverImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+    marginRight: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
-  searchInput: {
+  playlistInfo: {
     flex: 1,
-    color: '#fff',
+  },
+  playlistTitle: {
+    fontSize: 20,
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
+  trackInfo: {
     fontSize: 16,
+    color: '#AAA',
+    fontWeight: '300',
+  },
+  playControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  playButton: {
+    backgroundColor: '#FFF',
+    borderRadius: 25,
+    marginLeft: 10,
+    padding: 5,
   },
 });
+
 
 export default PlaylistScreen;

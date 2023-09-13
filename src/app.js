@@ -24,6 +24,8 @@ import {LogBox} from 'react-native';
 import {QueryClient, QueryClientProvider} from 'react-query'; // import react-query hooks
 import useFetchData from './useFetchData';
 import SplashScreen from './screens/SplashScreen';
+import {MusicDataProvider} from './context/MusicDataContext';
+import ModalContext, {ModalProvider} from './context/ModalContext';
 
 LogBox.ignoreLogs([
   'Sending `playback-state` with no listeners registered',
@@ -92,9 +94,11 @@ function MainPage({t}) {
         <MenuProvider>
           <NetworkProvider>
             <AuthProvider>
-              <NavigationContainer>
-                <TopLevelNavigator />
-              </NavigationContainer>
+              <ModalProvider>
+                <NavigationContainer>
+                  <TopLevelNavigator />
+                </NavigationContainer>
+              </ModalProvider>
             </AuthProvider>
           </NetworkProvider>
         </MenuProvider>

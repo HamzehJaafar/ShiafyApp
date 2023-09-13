@@ -1,5 +1,5 @@
 /* eslint-disable react-native/no-inline-styles */
-import React, {useEffect, useMemo, useRef, useState, useCallback} from 'react';
+import React, {useEffect, useRef, useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
-  PanResponder,
   FlatList,
 } from 'react-native';
 import {useDispatch, useSelector, shallowEqual} from 'react-redux';
@@ -24,8 +23,8 @@ import {
   SHUFFLE_MODE,
   PROGRESS,
 } from '../redux/actions';
-import TrackPlayer from 'react-native-track-player';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {seek} from '../playerFunctions';
 
 const screenHeight = Dimensions.get('window').height;
 const screenWidth = Dimensions.get('window').width;
@@ -93,7 +92,13 @@ const PlayerScreen = ({route, navigation}) => {
         const diff = Math.abs(newIndex - currentIndex);
         let songSwitched = false;
 
-        dispatch({type: newIndex > currentIndex ? NEXT_SONG : LAST_SONG});
+        console.log(currentIndex);
+        if (newIndex > currentIndex) {
+          dispatch({type: NEXT_SONG});
+        } else if (newIndex < currentIndex) {
+          console.log('back');
+          dispatch({type: LAST_SONG});
+        }
         setTimeout(() => {
           setSongSwitching(false); // Set songSwitching flag to false after the song switch
         }, 500);
@@ -122,13 +127,6 @@ const PlayerScreen = ({route, navigation}) => {
       }, 500);
     }
   }, [songSwitching]);
-
-  const seek = useCallback(
-    async value => {
-      await TrackPlayer.seekTo(value);
-    },
-    [dispatch],
-  );
 
   const renderItem = useCallback(({item}) => <PlayerItem item={item} />, []);
 
@@ -164,9 +162,12 @@ const PlayerScreen = ({route, navigation}) => {
         <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
           {currentSong.title}
         </Text>
-        <Text style={styles.artist} numberOfLines={1} ellipsizeMode="tail">
-          {currentSong.artists?.data[0]?.name}
-        </Text>
+        <View style={styles.row}>
+          <Text style={styles.artist} numberOfLines={1} ellipsizeMode="tail">
+            {currentSong.artists?.data[0]?.name}
+          </Text>
+        </View>
+
         <Slider
           style={[
             styles.slider,
@@ -178,11 +179,7 @@ const PlayerScreen = ({route, navigation}) => {
           minimumTrackTintColor="#1DB954"
           maximumTrackTintColor="#FFFFFF"
           thumbTintColor="#1DB954"
-          onSlidingComplete={value =>
-            seek(value).then(() =>
-              dispatch({type: PROGRESS, progressTime: value}),
-            )
-          }
+          onSlidingComplete={value => seek(value, dispatch)}
         />
         <View style={styles.timeContainer}>
           <Text style={[styles.time, {marginRight: 10}]}>
@@ -247,8 +244,9 @@ const PlayerItem = ({item}) => {
   return (
     <Animated.View
       style={{
+        flex: 2,
         width: screenWidth,
-        paddingHorizontal: screenWidth * 0.1,
+        paddingHorizontal: screenWidth * 0, // reduce from 0.1 to 0.05 or even 0
         alignItems: 'center',
         justifyContent: 'center',
       }}>
@@ -257,6 +255,10 @@ const PlayerItem = ({item}) => {
   );
 };
 
+const screenDimension = Dimensions.get('window');
+const albumArtSize = screenDimension.width * 0.8;
+const commonContentWidth = screenDimension.width * 0.8;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -264,50 +266,71 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#121212',
   },
+
+  // Album Art and Player Item
   albumArt: {
-    width: '100%',
-    height: Dimensions.get('window').width * 0.8,
-    resizeMode: 'contain',
-    marginBottom: -50,
-    marginTop: -60,
+    width: albumArtSize,
+    height: albumArtSize,
+    marginTop: -20,
+
+    borderRadius: 10,
+
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 1,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
   },
+
+  // Text and Titles
   title: {
+    marginHorizontal: 20,
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFF',
-    marginTop: 10, // Add top margin
   },
   artist: {
     fontSize: 16,
     color: '#FFF',
-    marginTop: 5, // Add top margin
-  },
-  slider: {
-    marginTop: 20,
-    width: Dimensions.get('window').width * 0.8,
-  },
-  buttons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 30,
-    width: Dimensions.get('window').width * 0.8,
+    marginTop: 10,
   },
   time: {
     color: '#fff',
+  },
+
+  slider: {
+    marginTop: 20,
+    width: commonContentWidth,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 15,
     alignItems: 'center',
+    width: commonContentWidth,
   },
 
+  // Buttons
+  buttons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 30,
+    width: commonContentWidth,
+  },
+
+  // Body (Not sure where this is used in your component)
   body: {
-    flex: 1,
-    position: 'relative',
-    marginBottom: 100,
-    justifyContent: 'space-between', // or 'space-between'
+    flex: 2,
+
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    marginBottom: 40,
+    marginTop: -25,
   },
 });
 

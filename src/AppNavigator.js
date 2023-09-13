@@ -14,6 +14,7 @@ import BottomPlayer from './components/BottomPlayer';
 import NavigationService from './NavigationService';
 import LibraryScreen from './screens/LibraryScreen';
 import SearchScreen from './screens/SearchScreen';
+import AddToPlaylistModal from './components/AddToPlaylistModal';
 
 // Create instances of navigator objects
 const Tab = createBottomTabNavigator();
@@ -95,42 +96,51 @@ const AppNavigator = ({onSignOut, forYou}) => {
   }, []);
 
   return (
-    <RootStack.Navigator
-      screenOptions={{
-        headerShown: false,
-        presentation: 'modal', // Update here
-        cardStyle: {backgroundColor: 'transparent'}, // Change the background color here
-      }}>
-      <RootStack.Screen name="Main">
-        {props => (
-          <MainTabNavigator
-            options={{headerShown: false}}
-            {...props}
-            onSignOut={onSignOut}
-            forYou={forYou}
-          />
-        )}
-      </RootStack.Screen>
-      <RootStack.Screen
-        name="Player"
-        component={PlayerScreen}
-        options={{
-          headerShown: true,
-          backgroundColor: 'transparent',
-          headerBackTitleVisible: false,
-          headerBackImage: () => (
-            <View style={{paddingLeft: 30, paddingTop: 0}}>
-              <Icon
-                name="arrow-downward"
-                type="material"
-                color="black"
-                size={30}
-              />
-            </View>
-          ),
-        }}
+<RootStack.Navigator
+  screenOptions={{
+    headerShown: false,
+    presentation: 'modal',
+    cardStyle: {backgroundColor: 'transparent'},
+  }}>
+  <RootStack.Screen name="Main">
+    {props => (
+      <MainTabNavigator
+        options={{headerShown: false}}
+        {...props}
+        onSignOut={onSignOut}
+        forYou={forYou}
       />
-    </RootStack.Navigator>
+    )}
+  </RootStack.Screen>
+  <RootStack.Screen
+    name="Player"
+    component={PlayerScreen}
+    options={{
+      headerShown: true,
+      backgroundColor: 'transparent',
+      headerBackTitleVisible: false,
+      headerBackImage: () => (
+        <View style={{paddingLeft: 30, paddingTop: 0}}>
+          <Icon
+            name="arrow-downward"
+            type="material"
+            color="black"
+            size={30}
+          />
+        </View>
+      ),
+    }}
+  />
+  <RootStack.Screen
+    name="AddToPlaylist"
+    component={AddToPlaylistModal}
+    options={{
+      headerShown: false,
+      cardStyle: {backgroundColor: 'transparent'},
+    }}
+  />
+</RootStack.Navigator>
+
   );
 };
 

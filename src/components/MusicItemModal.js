@@ -1,28 +1,58 @@
-import React, {useRef} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {StyleSheet, View, Text, Image, TouchableOpacity} from 'react-native';
 import {Icon} from 'react-native-elements';
 import SwipeUpDownModal from './SwipeUpDownModal';
+import AddToPlaylistModal from './AddToPlaylistModal';
+import CreatePlaylistModal from './CreatePlaylistModal';
+import { SwipeablePanel } from 'rn-swipeable-panel';
+import Modal from "react-native-modal";
+import { useModal } from '../context/ModalContext';
+
+
 
 const MusicItemModal = ({
-  modalVisible,
-  setModalVisible,
+  
+  closeModal,
   handleFavorite,
   isLiked,
   title,
   artist,
+  songId,
   albumArt,
 }) => {
+
+  const { openModal } = useModal();
+
+
+  const handleAddToPlaylist = () => {
+    openModal('AddToPlaylistModal', {
+      songId: songId,
+      closeModal,
+      onNewPlaylist: handleCreatePlaylist
+    });
+  };
+
+  const handleCreatePlaylist = () => {
+    openModal('CreatePlaylistModal', {
+      songId: songId,
+      closeModal
+    });
+  };
+
   return (
-    <SwipeUpDownModal
-      modalVisible={modalVisible}
-      onClose={() => setModalVisible(false)}
-      ContentModal={
-        <View style={styles.centeredView}>
-          <View style={[styles.modalView]}>
-            <Image source={albumArt} style={styles.albumArtModal} />
-            <Text style={styles.songTitleModal}>{title}</Text>
-            <Text style={styles.artistModal}>{artist?.data[0]?.name}</Text>
-            <TouchableOpacity
+    <>
+      <Modal
+  isVisible={true}
+  onSwipeComplete={closeModal}
+        swipeDirection="down"
+        style={styles.modal}
+        backdropOpacity={0.3}
+      >
+        <View style={styles.modalContent}>
+          <Image source={{ uri: albumArt?.url }} style={styles.albumArtModal} />
+          <Text style={styles.songTitleModal}>{title}</Text>
+          <Text style={styles.artistModal}>{artist?.data ? artist?.data[0]?.name : artist[0]?.name}</Text>
+       <TouchableOpacity
               style={styles.optionContainer}
               onPress={handleFavorite}>
               <Icon
@@ -32,7 +62,7 @@ const MusicItemModal = ({
               />
               <Text style={styles.optionText}>Like Track</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.optionContainer}>
+            <TouchableOpacity onPress={() => handleAddToPlaylist()} style={styles.optionContainer}>
               <Icon name="plus" type="font-awesome" color="#517fa4" />
               <Text style={styles.optionText}>Add to Playlist</Text>
             </TouchableOpacity>
@@ -53,30 +83,28 @@ const MusicItemModal = ({
               <Text style={styles.optionText}>View Credits</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      }
-    />
+
+        </Modal>
+
+    </>
   );
 };
+
 const styles = StyleSheet.create({
-  centeredView: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  modal: {
+    justifyContent: 'flex-end',
+    margin: 0,
   },
-  modalView: {
+  modalContent: {
     backgroundColor: '#121212',
     borderRadius: 20,
     padding: 10,
     paddingBottom: 30,
-    width: '90%',
-    height: '75%',
     alignItems: 'center',
   },
   albumArtModal: {
-    width: 200,
-    height: 200,
+    width: 100,
+    height: 100,
     marginBottom: 20,
     borderRadius: 100,
   },

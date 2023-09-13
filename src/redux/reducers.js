@@ -124,15 +124,6 @@ export default function (state, action) {
           }
       }
     case LAST_SONG:
-      if (state.progressTime > 15) {
-        return {...state, progressTime: 0};
-      }
-      if (state.playList.length === 1) {
-        return {...state, progressTime: 0};
-      }
-      if (state.currentIndex - 1 < 0) {
-        return {...state, progressTime: 0};
-      }
       return {
         ...state,
         progressTime: 0,

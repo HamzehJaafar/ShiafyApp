@@ -14,11 +14,18 @@ import {useNavigation} from '@react-navigation/native';
 import useFetchData from '../useFetchData';
 import MusicItemModal from './MusicItemModal';
 
+import { useDispatch, useSelector } from 'react-redux';
+import { POINT_SONG, PROGRESS } from '../redux/actions';
+import {useModal} from '../context/ModalContext';
+
 const MusicItem = ({id, title, artist, musicData, songIndex, albumArt}) => {
   const navigation = useNavigation();
   const {likedSongs, likedSongsLoading, likeSong, unlikeSong} = useFetchData();
   const [isLiked, setIsLiked] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const { currentSong, isPlaying } = useSelector(state => state);
+  const dispatch = useDispatch();
+  const { openModal, closeModal } = useModal();
+
 
   useEffect(() => {
     // Check if the song is liked
@@ -32,7 +39,10 @@ const MusicItem = ({id, title, artist, musicData, songIndex, albumArt}) => {
   }, [likedSongsLoading, likedSongs, id]);
 
   const handlePress = () => {
-    navigation.navigate('Player', {musicData, song: songIndex});
+    if (currentSong)
+    {dispatch({ type: POINT_SONG, playList: musicData, song: songIndex });
+    dispatch({ type: PROGRESS, progressTime: 0 });} else {
+    navigation.navigate('Player', {musicData, song: songIndex}); }
   };
 
   const handleFavorite = () => {
@@ -44,8 +54,18 @@ const MusicItem = ({id, title, artist, musicData, songIndex, albumArt}) => {
     setIsLiked(!isLiked); // Toggle like state
   };
 
+
   const handleMoreOptions = () => {
-    setModalVisible(!modalVisible);
+    console.log('made it')
+    openModal('MusicItemModal', {
+      songId: id,
+      handleFavorite,
+      isLiked,
+      title,
+      artist,
+      albumArt,
+      closeModal // Pass the closeModal function as a prop to the modal
+    });
   };
 
   return (
@@ -61,18 +81,10 @@ const MusicItem = ({id, title, artist, musicData, songIndex, albumArt}) => {
         </Text>
         <Text style={styles.artist}>{artist?.data[0]?.name}</Text>
       </View>
-      <TouchableOpacity style={styles.dots} onPress={handleMoreOptions}>
+      <TouchableOpacity style={styles.dots}     hitSlop={{top: 10, bottom: 10, left: 10, right: 10}} //
+ onPress={handleMoreOptions}>
         <Icon name="ellipsis-v" type="font-awesome" color="#517fa4" />
       </TouchableOpacity>
-      <MusicItemModal
-        modalVisible={modalVisible}
-        setModalVisible={setModalVisible}
-        handleFavorite={handleFavorite}
-        isLiked={isLiked}
-        title={title}
-        artist={artist}
-        albumArt={albumArt}
-      />
     </TouchableOpacity>
   );
 };
@@ -81,95 +93,34 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    borderBottomWidth: 1,
-    backgroundColor: '#121212',
+    padding: 15,
     borderBottomColor: '#333',
-  },
-  albumArtContainer: {
-    marginRight: 10,
+    backgroundColor: '#121212',
   },
   albumArt: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 5,
+    marginRight: 15,
   },
   textContainer: {
     flex: 1,
-    flexDirection: 'column',
-    marginRight: 10,
   },
   title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    fontSize: 18,
+    paddingRight: 20,
+    color: '#FFF',
   },
   artist: {
-    fontSize: 12,
+    paddingRight: 20,
+    fontSize: 14,
     color: '#999',
   },
-  centeredView: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 22,
-  },
-  modalView: {
-    margin: 20,
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 35,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  openButton: {
-    backgroundColor: '#F194FF',
-    borderRadius: 20,
-    padding: 10,
-    elevation: 2,
-  },
-  textStyle: {
-    color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  modalText: {
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  albumArtModal: {
-    width: 60,
-    height: 60,
-    marginBottom: 10,
-  },
-  songTitleModal: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  artistModal: {
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  optionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  optionText: {
-    marginLeft: 10,
-    fontSize: 16,
-  },
   dots: {
-    paddingLeft: 10,
-    paddingRight: 10,
+
+    paddingLeft: 20,  // Increase this value
+    paddingRight: 20, // Add this for symmetry
   },
 });
+
 export default MusicItem;

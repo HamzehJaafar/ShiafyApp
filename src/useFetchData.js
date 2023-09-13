@@ -5,6 +5,7 @@ import {
   likeSong,
   unlikeSong,
 } from './helpers/ApiHelper';
+import { fetchPrivatePlaylistsOfUser } from './api/playlist';
 
 const useFetchData = user => {
   const queryClient = useQueryClient();
@@ -30,6 +31,12 @@ const useFetchData = user => {
       // Invalidate and refetch
       queryClient.invalidateQueries('getLikedSongs');
     },
+    onError: (err, songId, context) => {
+      queryClient.setQueryData('getLikedSongs', context.previousLikedSongs);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries('getLikedSongs');
+    },
   });
 
   const unlikeMutation = useMutation(unlikeSong, {
@@ -37,7 +44,22 @@ const useFetchData = user => {
       // Invalidate and refetch
       queryClient.invalidateQueries('getLikedSongs');
     },
+    onError: (err, songId, context) => {
+      queryClient.setQueryData('getLikedSongs', context.previousLikedSongs);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries('getLikedSongs');
+    },
   });
+  
+
+  const {
+    data: privatePlaylists,
+    isLoading: privatePlaylistsLoading,
+    isError: privatePlaylistsError,
+} = useQuery('getPrivatePlaylists', fetchPrivatePlaylistsOfUser, {
+    enabled: !!user,
+});
 
   return {
     forYou,
@@ -48,6 +70,9 @@ const useFetchData = user => {
     likedSongsError,
     likeSong: likeMutation.mutate,
     unlikeSong: unlikeMutation.mutate,
+    privatePlaylists,
+    privatePlaylistsLoading,
+    privatePlaylistsError,
   };
 };
 
