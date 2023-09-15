@@ -56,6 +56,7 @@ const PlaylistScreen = ({ route }) => {
           </TouchableOpacity>
         </View>
       </View>
+      
     </View>
   );
   return (

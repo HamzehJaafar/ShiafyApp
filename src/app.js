@@ -26,6 +26,7 @@ import useFetchData from './useFetchData';
 import SplashScreen from './screens/SplashScreen';
 import {MusicDataProvider} from './context/MusicDataContext';
 import ModalContext, {ModalProvider} from './context/ModalContext';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
 
 LogBox.ignoreLogs([
   'Sending `playback-state` with no listeners registered',
@@ -89,21 +90,23 @@ function TopLevelNavigator() {
 
 function MainPage({t}) {
   return (
-    <Provider store={store}>
-      <QueryClientProvider client={queryClient}>
-        <MenuProvider>
-          <NetworkProvider>
-            <AuthProvider>
-              <ModalProvider>
-                <NavigationContainer>
-                  <TopLevelNavigator />
-                </NavigationContainer>
-              </ModalProvider>
-            </AuthProvider>
-          </NetworkProvider>
-        </MenuProvider>
-      </QueryClientProvider>
-    </Provider>
+    <GestureHandlerRootView style={{flex: 1}}>
+      <Provider store={store}>
+        <QueryClientProvider client={queryClient}>
+          <ModalProvider>
+            <MenuProvider>
+              <NetworkProvider>
+                <AuthProvider>
+                  <NavigationContainer>
+                    <TopLevelNavigator />
+                  </NavigationContainer>
+                </AuthProvider>
+              </NetworkProvider>
+            </MenuProvider>
+          </ModalProvider>
+        </QueryClientProvider>
+      </Provider>
+    </GestureHandlerRootView>
   );
 }
 

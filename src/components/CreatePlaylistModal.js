@@ -9,50 +9,89 @@ import {
 import SwipeUpDownModal from './SwipeUpDownModal';
 import {addSongToPlaylist, createPlaylist} from '../api/playlist';
 import Modal from 'react-native-modal';
+import BottomSheet from '@gorhom/bottom-sheet';
 
-const CreatePlaylistModal = ({closeModal, songId}) => {
+const CreatePlaylistModal = React.forwardRef((props, ref) => {
+  const {closeModal, songId} = props;
   const [playlistName, setPlaylistName] = useState('');
+  const snapPoints = React.useMemo(() => ['80%'], []); // Adjust as per your needs
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleCreate = async () => {
-    const playlist = await createPlaylist(playlistName);
-    console.log(playlist);
+    if (isProcessing || !playlistName) {
+      return; // prevent further action if already processing
+    }
+    setIsProcessing(true);
 
-    const addSong = await addSongToPlaylist(playlist.id, songId);
-
-    console.log(addSong);
-    setModalVisible(false);
+    try {
+      ref.current.close();
+      const playlist = await createPlaylist(playlistName);
+      const addSong = await addSongToPlaylist(playlist.id, songId);
+    } catch (error) {
+      console.error('Error creating playlist:', error);
+    } finally {
+      setIsProcessing(false); // Reset it back after processing is done
+    }
   };
 
   return (
-    <Modal  isVisible={true}
-    onSwipeComplete={closeModal}
-    swipeDirection="down"
-    style={styles.modal}
-    backdropOpacity={0.3}>
-      <View style={styles.modalView}>
-        <Text style={styles.title}>Create Playlist</Text>
-        <TextInput
-          placeholder="My Playlist"
-          placeholderTextColor="#888"
-          value={playlistName}
-          onChangeText={setPlaylistName}
-          style={styles.input}
-        />
-        <TouchableOpacity
-          style={styles.doneButton}
-          onPress={handleCreate}
-          activeOpacity={0.7}>
-          <Text style={styles.buttonText}>Create</Text>
-        </TouchableOpacity>
-      </View>
-    </Modal>
+    <View pointerEvents="box-none" style={styles.modal}>
+      <BottomSheet
+        ref={ref}
+        enablePanDownToClose
+        index={0}
+        handleComponent={null}
+        backgroundComponent={() => (
+          <View
+            style={{flex: 1, backgroundColor: '#121212', borderRadius: 20}}
+          />
+        )}
+        snapPoints={snapPoints}>
+        <View style={styles.modalContent}>
+          <Text style={styles.title}>Create Playlist</Text>
+          <TextInput
+            placeholder="My Playlist"
+            placeholderTextColor="#888"
+            value={playlistName}
+            onChangeText={setPlaylistName}
+            style={styles.input}
+          />
+          <TouchableOpacity
+            style={[
+              styles.doneButton,
+              playlistName ? {} : styles.disabledDoneButton,
+            ]}
+            onPress={playlistName ? handleCreate : null}
+            activeOpacity={0.7}>
+            <Text style={styles.buttonText}>Create</Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
+    </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   modal: {
-    justifyContent: 'flex-end',
-    margin: 0,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '100%',
+    zIndex: 10,
+    backgroundColor: 'transparent',
+  },
+  modalContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#060606',
+
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 10,
+    paddingBottom: 30,
+    alignItems: 'center',
   },
   modalView: {
     flex: 1,
@@ -91,6 +130,11 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 18,
+  },
+
+  disabledDoneButton: {
+    backgroundColor: '#C7C7C7', // Grey color for disabled button
+    shadowOpacity: 0.1, // Reduced shadow for disabled button
   },
 });
 

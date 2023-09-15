@@ -1,5 +1,5 @@
 /* eslint-disable react-native/no-inline-styles */
-import React, {useEffect, useRef, useState, useCallback} from 'react';
+import React, {useEffect, useRef, useState, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
@@ -25,12 +25,13 @@ import {
 } from '../redux/actions';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {seek} from '../playerFunctions';
+import BottomSheet from '@gorhom/bottom-sheet';
 
 const screenHeight = Dimensions.get('window').height;
 const screenWidth = Dimensions.get('window').width;
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
-const PlayerScreen = ({route, navigation}) => {
+const PlayerScreen = React.forwardRef((props, ref) => {
   const dispatch = useDispatch();
   const {
     playList,
@@ -43,7 +44,9 @@ const PlayerScreen = ({route, navigation}) => {
     playMode,
   } = useSelector(state => state, shallowEqual);
 
-  const continuePlayingRef = useRef(false);
+  const bottomSheetRef = useRef(null);
+  const snapPoints = useMemo(() => ['100%'], []); // Adjust the minimized height to 60% or as needed.
+
   const flatListRef = useRef();
   const [songSwitching, setSongSwitching] = useState(false); // Add songSwitching flag
   const playerOffsetX = useRef(new Animated.Value(0)).current;
@@ -61,18 +64,6 @@ const PlayerScreen = ({route, navigation}) => {
     [dispatch],
   );
   const pan = useRef(new Animated.ValueXY()).current;
-
-  useEffect(() => {
-    if (route.params && route.params.continue) {
-      continuePlayingRef.current = route.params.continue;
-    }
-
-    if (route.params && route.params.musicData) {
-      const {musicData, song} = route.params;
-      dispatch({type: POINT_SONG, playList: musicData, song});
-      dispatch({type: PROGRESS, progressTime: 0}); // Reset progress time when switching songs
-    }
-  }, [route.params]);
 
   useEffect(() => {
     if (flatListRef.current) {
@@ -133,111 +124,134 @@ const PlayerScreen = ({route, navigation}) => {
   if (!currentSong) {
     return null;
   }
-
   return (
-    <Animated.View
-      style={[styles.container, {transform: [{translateY: playerPosition}]}]}>
-      <AnimatedFlatList
-        ref={flatListRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        overScrollMode="never"
-        getItemLayout={(data, index) => ({
-          length: screenWidth,
-          offset: screenWidth * index,
-          index,
-        })}
-        onMomentumScrollEnd={Animated.event(
-          [{nativeEvent: {contentOffset: {x: playerOffsetX}}}],
-          {useNativeDriver: true, listener: event => handleScroll(event)},
-        )}
-        scrollEventThrottle={16}
-        data={playList}
-        keyExtractor={(item, index) => `${item.id}-${index}`}
-        renderItem={renderItem}
-        initialScrollIndex={currentIndex}
-      />
-      <View style={styles.body}>
-        <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
-          {currentSong.title}
-        </Text>
-        <View style={styles.row}>
-          <Text style={styles.artist} numberOfLines={1} ellipsizeMode="tail">
-            {currentSong.artists?.data[0]?.name}
-          </Text>
-        </View>
-
-        <Slider
+    <View pointerEvents="box-none" style={[styles.modal]}>
+      <BottomSheet
+        ref={ref}
+        index={0}
+        enablePanDownToClose
+        snapPoints={snapPoints}
+        handleComponent={null}>
+        <Animated.View
           style={[
-            styles.slider,
-            {flexDirection: 'row', justifyContent: 'space-between'},
+            styles.container,
+            {transform: [{translateY: playerPosition}]},
           ]}
-          minimumValue={0}
-          maximumValue={totalLength}
-          value={progressTime}
-          minimumTrackTintColor="#1DB954"
-          maximumTrackTintColor="#FFFFFF"
-          thumbTintColor="#1DB954"
-          onSlidingComplete={value => seek(value, dispatch)}
-        />
-        <View style={styles.timeContainer}>
-          <Text style={[styles.time, {marginRight: 10}]}>
-            {Math.floor(progressTime / 60)}:
-            {(progressTime % 60).toFixed(0).padStart(2, '0')}
-          </Text>
-          <Text style={[styles.time, {marginLeft: 10}]}>
-            {Math.floor(totalLength / 60)}:
-            {(totalLength % 60).toFixed(0).padStart(2, '0')}
-          </Text>
-        </View>
-        <View style={styles.buttons}>
-          <TouchableOpacity onPress={toggleShuffle}>
-            <Icon
-              name={shuffleMode ? 'shuffle' : 'shuffle-disabled'}
-              type="material-community"
-              color="#FFFFFF"
-              size={30}
+          pointerEvents={'auto'}>
+          <AnimatedFlatList
+            ref={flatListRef}
+            horizontal
+            pagingEnabled
+            pointerEvents={'auto'}
+            showsHorizontalScrollIndicator={false}
+            overScrollMode="never"
+            getItemLayout={(data, index) => ({
+              length: screenWidth,
+              offset: screenWidth * index,
+              index,
+            })}
+            onMomentumScrollEnd={Animated.event(
+              [{nativeEvent: {contentOffset: {x: playerOffsetX}}}],
+              {useNativeDriver: true, listener: event => handleScroll(event)},
+            )}
+            scrollEventThrottle={16}
+            data={playList}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
+            renderItem={renderItem}
+            initialScrollIndex={currentIndex}
+          />
+          <View style={styles.body}>
+            <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+              {currentSong.title}
+            </Text>
+            <View style={styles.row}>
+              <Text
+                style={styles.artist}
+                numberOfLines={1}
+                ellipsizeMode="tail">
+                {currentSong?.artists.data
+                  ? currentSong.artists?.data[0]?.name
+                  : currentSong.artists[0].name}
+              </Text>
+            </View>
+
+            <Slider
+              style={[
+                styles.slider,
+                {flexDirection: 'row', justifyContent: 'space-between'},
+              ]}
+              minimumValue={0}
+              maximumValue={totalLength}
+              value={progressTime}
+              minimumTrackTintColor="#1DB954"
+              maximumTrackTintColor="#FFFFFF"
+              thumbTintColor="#1DB954"
+              onSlidingComplete={value => seek(value, dispatch)}
             />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={prevSong}>
-            <Icon
-              name="skip-previous"
-              type="material"
-              color="#FFFFFF"
-              size={40}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={togglePlayback}>
-            <Icon
-              name={isPlaying ? 'pause' : 'play-arrow'}
-              type="material"
-              color="#FFFFFF"
-              size={50}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={nextSong}>
-            <Icon name="skip-next" type="material" color="#FFFFFF" size={40} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={toggleRepeat}>
-            <Icon
-              name={
-                playMode === 'noloop'
-                  ? 'repeat-off'
-                  : playMode === 'loop'
-                  ? 'repeat'
-                  : 'repeat-once'
-              }
-              type="material-community"
-              color="#FFFFFF"
-              size={30}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Animated.View>
+            <View style={styles.timeContainer}>
+              <Text style={[styles.time, {marginRight: 10}]}>
+                {Math.floor(progressTime / 60)}:
+                {(progressTime % 60).toFixed(0).padStart(2, '0')}
+              </Text>
+              <Text style={[styles.time, {marginLeft: 10}]}>
+                {Math.floor(totalLength / 60)}:
+                {(totalLength % 60).toFixed(0).padStart(2, '0')}
+              </Text>
+            </View>
+            <View style={styles.buttons}>
+              <TouchableOpacity onPress={toggleShuffle}>
+                <Icon
+                  name={shuffleMode ? 'shuffle' : 'shuffle-disabled'}
+                  type="material-community"
+                  color="#FFFFFF"
+                  size={30}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={prevSong}>
+                <Icon
+                  name="skip-previous"
+                  type="material"
+                  color="#FFFFFF"
+                  size={40}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={togglePlayback}>
+                <Icon
+                  name={isPlaying ? 'pause' : 'play-arrow'}
+                  type="material"
+                  color="#FFFFFF"
+                  size={50}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={nextSong}>
+                <Icon
+                  name="skip-next"
+                  type="material"
+                  color="#FFFFFF"
+                  size={40}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={toggleRepeat}>
+                <Icon
+                  name={
+                    playMode === 'noloop'
+                      ? 'repeat-off'
+                      : playMode === 'loop'
+                      ? 'repeat'
+                      : 'repeat-once'
+                  }
+                  type="material"
+                  color="#FFFFFF"
+                  size={30}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Animated.View>
+      </BottomSheet>
+    </View>
   );
-};
+});
 
 const PlayerItem = ({item}) => {
   const screenWidth = Dimensions.get('window').width;
@@ -260,6 +274,15 @@ const albumArtSize = screenDimension.width * 0.8;
 const commonContentWidth = screenDimension.width * 0.8;
 
 const styles = StyleSheet.create({
+  modal: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '100%',
+    zIndex: 10,
+    backgroundColor: 'transparent',
+  },
   container: {
     flex: 1,
     alignItems: 'center',
@@ -271,7 +294,7 @@ const styles = StyleSheet.create({
   albumArt: {
     width: albumArtSize,
     height: albumArtSize,
-    marginTop: -20,
+    marginTop: 50,
 
     borderRadius: 10,
 
@@ -282,6 +305,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.3,
     shadowRadius: 4.65,
+    elevation: 8,
   },
 
   // Text and Titles

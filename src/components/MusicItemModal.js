@@ -1,58 +1,82 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {StyleSheet, View, Text, Image, TouchableOpacity} from 'react-native';
 import {Icon} from 'react-native-elements';
-import SwipeUpDownModal from './SwipeUpDownModal';
-import AddToPlaylistModal from './AddToPlaylistModal';
-import CreatePlaylistModal from './CreatePlaylistModal';
-import { SwipeablePanel } from 'rn-swipeable-panel';
-import Modal from "react-native-modal";
-import { useModal } from '../context/ModalContext';
 
+import {useModal} from '../context/ModalContext';
+import BottomSheet from '@gorhom/bottom-sheet';
+import useFetchData from '../useFetchData';
 
+const MusicItemModal = React.forwardRef((props, ref) => {
+  const {songId, title, artist, albumArt} = props;
 
-const MusicItemModal = ({
-  
-  closeModal,
-  handleFavorite,
-  isLiked,
-  title,
-  artist,
-  songId,
-  albumArt,
-}) => {
+  const {openModal} = useModal();
+  const snapPoints = React.useMemo(() => ['80%'], []); // Adjust as per your needs
+  const [isLiked, setIsLiked] = useState(null);
+  const {likedSongs, likedSongsLoading, likeSong, unlikeSong} = useFetchData();
 
-  const { openModal } = useModal();
+  useEffect(() => {
+    // Check if the song is liked
+    if (!likedSongsLoading) {
+      likedSongs?.data.forEach(song => {
+        if (song.song.id === songId) {
+          setIsLiked(song.id);
+        }
+      });
+    }
+  }, [likedSongsLoading, likedSongs, songId]);
 
+  const handlePress = () => {
+    dispatch({type: POINT_SONG, playList: musicData, song: songIndex});
+    dispatch({type: PROGRESS, progressTime: 0});
+  };
+
+  const handleFavorite = () => {
+    if (isLiked) {
+      unlikeSong(isLiked);
+    } else {
+      likeSong(songId);
+    }
+    setIsLiked(!isLiked); // Toggle like state
+  };
 
   const handleAddToPlaylist = () => {
     openModal('AddToPlaylistModal', {
       songId: songId,
-      closeModal,
-      onNewPlaylist: handleCreatePlaylist
+      onNewPlaylist: handleCreatePlaylist,
     });
   };
 
   const handleCreatePlaylist = () => {
     openModal('CreatePlaylistModal', {
       songId: songId,
-      closeModal
     });
   };
 
   return (
     <>
-      <Modal
-  isVisible={true}
-  onSwipeComplete={closeModal}
-        swipeDirection="down"
-        style={styles.modal}
-        backdropOpacity={0.3}
-      >
-        <View style={styles.modalContent}>
-          <Image source={{ uri: albumArt?.url }} style={styles.albumArtModal} />
-          <Text style={styles.songTitleModal}>{title}</Text>
-          <Text style={styles.artistModal}>{artist?.data ? artist?.data[0]?.name : artist[0]?.name}</Text>
-       <TouchableOpacity
+      <View pointerEvents="box-none" style={styles.modal}>
+        <BottomSheet
+          ref={ref}
+          enablePanDownToClose
+          index={0}
+          handleComponent={null}
+          backgroundComponent={() => (
+            <View
+              style={{
+                flex: 1,
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+              }}
+            />
+          )}
+          snapPoints={snapPoints}>
+          <View style={styles.modalContent}>
+            <Image source={{uri: albumArt?.url}} style={styles.albumArtModal} />
+            <Text style={styles.songTitleModal}>{title}</Text>
+            <Text style={styles.artistModal}>
+              {artist?.data ? artist?.data[0]?.name : artist[0]?.name}
+            </Text>
+            <TouchableOpacity
               style={styles.optionContainer}
               onPress={handleFavorite}>
               <Icon
@@ -62,7 +86,9 @@ const MusicItemModal = ({
               />
               <Text style={styles.optionText}>Like Track</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleAddToPlaylist()} style={styles.optionContainer}>
+            <TouchableOpacity
+              onPress={() => handleAddToPlaylist()}
+              style={styles.optionContainer}>
               <Icon name="plus" type="font-awesome" color="#517fa4" />
               <Text style={styles.optionText}>Add to Playlist</Text>
             </TouchableOpacity>
@@ -83,21 +109,29 @@ const MusicItemModal = ({
               <Text style={styles.optionText}>View Credits</Text>
             </TouchableOpacity>
           </View>
-
-        </Modal>
-
+        </BottomSheet>
+      </View>
     </>
   );
-};
+});
 
 const styles = StyleSheet.create({
   modal: {
-    justifyContent: 'flex-end',
-    margin: 0,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '100%',
+    zIndex: 10,
+    backgroundColor: 'transparent',
   },
   modalContent: {
-    backgroundColor: '#121212',
-    borderRadius: 20,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#060606',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     padding: 10,
     paddingBottom: 30,
     alignItems: 'center',

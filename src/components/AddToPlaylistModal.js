@@ -13,14 +13,13 @@ import SwipeUpDownModal from './SwipeUpDownModal';
 import useFetchData from '../useFetchData';
 import Checkbox from './Checkbox';
 import {addSongToPlaylist, removeSongFromPlaylist} from '../api/playlist';
-import {ScrollView} from 'react-native-gesture-handler';
-import Modal from 'react-native-modal';
+import BottomSheet from '@gorhom/bottom-sheet';
 
-const AddToPlaylistModal = ({
-  closeModal,
-  onNewPlaylist,
-  songId,
-}) => {
+const AddToPlaylistModal = React.forwardRef((props, ref) => {
+  const {closeModal, onNewPlaylist, songId} = props;
+  const snapPoints = React.useMemo(() => ['80%'], []); // Adjust as per your needs
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const {privatePlaylists, privatePlaylistsLoading, privatePlaylistsError} =
     useFetchData();
 
@@ -53,10 +52,6 @@ const AddToPlaylistModal = ({
     setSelectedPlaylists(initialSelectedPlaylists);
   }, [privatePlaylists, songId]);
 
-  useEffect(() => {
-    console.log('AddToPlaylistModal rendered');
-  }, []);
-
   const togglePlaylistSelection = playlistId => {
     setSelectedPlaylists(prevState =>
       prevState.includes(playlistId)
@@ -66,32 +61,41 @@ const AddToPlaylistModal = ({
   };
 
   const handleDonePress = async () => {
-    const initialSelectedPlaylists = (privatePlaylists || [])
-      .filter(playlist =>
-        playlist.songs.some(song => song.id === parseInt(songId, 10)),
-      )
-      .map(playlist => playlist.id);
-
-    for (const playlist of privatePlaylists) {
-      const playlistId = playlist.id;
-
-      if (
-        selectedPlaylists.includes(playlistId) &&
-        !initialSelectedPlaylists.includes(playlistId)
-      ) {
-        await addSongToPlaylist(playlistId, songId);
-      } else if (
-        !selectedPlaylists.includes(playlistId) &&
-        initialSelectedPlaylists.includes(playlistId)
-      ) {
-        console.log('Removing song from playlist:', playlistId);
-        await removeSongFromPlaylist(playlistId, songId);
-      } else {
-        console.log('No change for playlist:', playlistId);
-      }
+    if (isProcessing) {
+      return; // prevent further action if already processing
     }
 
-    setModalVisible(false);
+    try {
+      ref.current.close();
+      const initialSelectedPlaylists = (privatePlaylists || [])
+        .filter(playlist =>
+          playlist.songs.some(song => song.id === parseInt(songId, 10)),
+        )
+        .map(playlist => playlist.id);
+
+      for (const playlist of privatePlaylists) {
+        const playlistId = playlist.id;
+
+        if (
+          selectedPlaylists.includes(playlistId) &&
+          !initialSelectedPlaylists.includes(playlistId)
+        ) {
+          await addSongToPlaylist(playlistId, songId);
+        } else if (
+          !selectedPlaylists.includes(playlistId) &&
+          initialSelectedPlaylists.includes(playlistId)
+        ) {
+          console.log('Removing song from playlist:', playlistId);
+          await removeSongFromPlaylist(playlistId, songId);
+        } else {
+          console.log('No change for playlist:', playlistId);
+        }
+      }
+    } catch (error) {
+      console.error('Error creating playlist:', error);
+    } finally {
+      setIsProcessing(false); // Reset it back after processing is done
+    }
   };
 
   const openNewPlaylist = async () => {
@@ -106,49 +110,65 @@ const AddToPlaylistModal = ({
   }
 
   return (
-    <Modal
-      isVisible={true}
-      onSwipeComplete={closeModal}
-      swipeDirection="down"
-      style={styles.modal}
-      backdropOpacity={0.3}>
-      <View style={styles.centeredView}>
-        <Text style={styles.title}>Add to playlist</Text>
-        <TouchableOpacity style={styles.ovalButton} onPress={openNewPlaylist}>
-          <Text style={styles.buttonText}>New Playlist</Text>
-        </TouchableOpacity>
-        <FlatList
-          data={privatePlaylists}
-          renderItem={renderPlaylistItem}
-          keyExtractor={item => item.id.toString()}
-          style={{width: '100%'}}
-        />
-        <TouchableOpacity
-          style={[
-            styles.doneButton,
-            selectedPlaylists.length ? {} : styles.disabledDoneButton,
-          ]}
-          onPress={selectedPlaylists.length ? handleDonePress : null}
-          activeOpacity={0.7}>
-          <Text style={styles.doneButtonText}>Done</Text>
-        </TouchableOpacity>
-      </View>
-    </Modal>
+    <View pointerEvents="box-none" style={styles.modal}>
+      <BottomSheet
+        ref={ref}
+        enablePanDownToClose
+        index={0}
+        handleComponent={null}
+        backgroundComponent={() => (
+          <View
+            style={{flex: 1, backgroundColor: '#121212', borderRadius: 20}}
+          />
+        )}
+        snapPoints={snapPoints}>
+        <View style={styles.modalContent}>
+          <Text style={styles.title}>Add to playlist</Text>
+          <TouchableOpacity style={styles.ovalButton} onPress={openNewPlaylist}>
+            <Text style={styles.buttonText}>New Playlist</Text>
+          </TouchableOpacity>
+          <FlatList
+            data={privatePlaylists}
+            renderItem={renderPlaylistItem}
+            keyExtractor={item => item.id.toString()}
+            style={{width: '100%'}}
+          />
+          <TouchableOpacity
+            style={[
+              styles.doneButton,
+              selectedPlaylists.length ? {} : styles.disabledDoneButton,
+            ]}
+            onPress={selectedPlaylists.length ? handleDonePress : null}
+            activeOpacity={0.7}>
+            <Text style={styles.doneButtonText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
+    </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   modal: {
-    justifyContent: 'flex-end',
-    margin: 0,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '100%',
+    zIndex: 10,
+    backgroundColor: 'transparent',
   },
-  centeredView: {
+  modalContent: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#181818', // dark background similar to Spotify's theme
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    justifyContent: 'center',
+    backgroundColor: '#060606',
+
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 10,
+    paddingBottom: 30,
+    alignItems: 'center',
   },
   title: {
     marginTop: 50,
@@ -205,7 +225,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1, // Reduced shadow for disabled button
   },
   doneButton: {
-    marginBottom: 100,
     backgroundColor: '#1DB954', // Spotify green
     paddingVertical: 12,
     paddingHorizontal: 30,

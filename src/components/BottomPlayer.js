@@ -11,6 +11,7 @@ import {useNavigation} from '@react-navigation/native';
 import {Icon} from 'react-native-elements';
 import {useSelector, useDispatch} from 'react-redux';
 import {playPrevious, playNext, togglePlay} from '../playerFunctions';
+import {useModal} from '../context/ModalContext';
 
 const BottomPlayer = () => {
   const navigation = useNavigation();
@@ -26,6 +27,7 @@ const BottomPlayer = () => {
     error,
   } = useSelector(state => state);
 
+  const {openPlayer} = useModal();
   if (!currentSong) {
     return null;
   }
@@ -34,11 +36,15 @@ const BottomPlayer = () => {
     container: {
       flex: 1,
       backgroundColor: 'rgb(4,4,4)',
+      opacity: 0.9,
       flexDirection: 'row',
       alignItems: 'center',
       padding: 10,
-      paddingHorizontal: 20,
+      paddingHorizontal: 10,
+      marginHorizontal: 3,
       paddingVertical: 10,
+      borderRadius: 15, // Added
+      overflow: 'hidden', // Added
     },
     progressBar: {
       position: 'absolute',
@@ -46,12 +52,15 @@ const BottomPlayer = () => {
       left: 0,
       height: 3,
       backgroundColor: 'rgba(29, 185, 84, 1)',
+      borderBottomRightRadius: 10, // Added
+      borderBottomLeftRadius: 10, // Added
       width: `${(progressTime / totalLength) * 100}%`,
     },
     albumArt: {
       width: 50,
       height: 50,
       marginRight: 10,
+      borderRadius: 40, // Added
     },
     songInfo: {
       flex: 1,
@@ -70,10 +79,10 @@ const BottomPlayer = () => {
       alignItems: 'center',
     },
   };
+  console.log(currentSong);
   return (
     <SafeAreaView>
-      <TouchableOpacity
-        onPress={() => navigation.navigate('Player', {continue: true})}>
+      <TouchableOpacity onPress={() => openPlayer()} activeOpacity={1}>
         <View style={styles.container}>
           <View style={styles.progressBar} />
           {loading ? (
@@ -87,7 +96,9 @@ const BottomPlayer = () => {
               <View style={styles.songInfo}>
                 <Text style={styles.title}>{currentSong.title}</Text>
                 <Text style={styles.author}>
-                  {currentSong.artists?.data[0]?.name}
+                  {currentSong?.artists.data
+                    ? currentSong.artists?.data[0]?.name
+                    : currentSong.artists[0].name}
                 </Text>
               </View>
               {error && <Text>Error loading song</Text>}
