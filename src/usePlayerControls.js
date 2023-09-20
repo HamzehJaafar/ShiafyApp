@@ -3,7 +3,11 @@ import {playPrevious, playNext, togglePlay} from '../playerFunctions';
 
 const usePlayerControls = () => {
   const dispatch = useDispatch();
-  const {playList, currentIndex, isPlaying} = useSelector(state => state);
+  const {playList, currentIndex, isPlaying} = useSelector(state => ({
+    playList: state.playList,
+    currentIndex: state.currentIndex,
+    isPlaying: state.isPlaying,
+  }));
 
   const handlePlayPrevious = () => {
     playPrevious(currentIndex, playList, dispatch);

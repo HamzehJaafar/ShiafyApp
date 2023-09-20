@@ -12,7 +12,7 @@ const LibraryScreen = () => {
   const { privatePlaylists, privatePlaylistsLoading } = useFetchData();
 
   let songs = [];
-  if (likedSongs?.data) {
+  if (likedSongs) {
     songs = likedSongs?.data.map(item => item.song);
   }
 

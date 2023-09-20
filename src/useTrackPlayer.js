@@ -5,12 +5,15 @@ import {PROGRESS} from './redux/actions';
 import {
   Capability,
   AppKilledPlaybackBehavior,
-  Event,
 } from 'react-native-track-player';
 import {playNext, playPrevious, seek} from './playerFunctions';
 
 export const useTrackPlayer = () => {
-  const {isPlaying, currentSong} = useSelector(state => state);
+  const {currentSong, isPlaying} = useSelector(state => ({
+    currentSong: state.currentSong,
+    isPlaying: state.isPlaying,
+  }));
+
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -109,30 +112,33 @@ export async function trackPlayerRemoteEvents(dispatch) {
 export async function setupPlayer() {
   let isSetup = false;
   try {
+    if (!isSetup) {
+      await TrackPlayer.setupPlayer();
+
+      await TrackPlayer.updateOptions({
+        android: {
+          appKilledPlaybackBehavior:
+            AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification,
+        },
+        capabilities: [
+          Capability.Play,
+          Capability.Pause,
+          Capability.SkipToNext,
+          Capability.SkipToPrevious,
+          Capability.SeekTo,
+        ],
+        compactCapabilities: [
+          Capability.Play,
+          Capability.Pause,
+          Capability.SkipToNext,
+        ],
+        progressUpdateEventInterval: 2,
+      });
+    }
+
     await TrackPlayer.getCurrentTrack();
     isSetup = true;
   } catch {
-    await TrackPlayer.setupPlayer();
-    await TrackPlayer.updateOptions({
-      android: {
-        appKilledPlaybackBehavior:
-          AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification,
-      },
-      capabilities: [
-        Capability.Play,
-        Capability.Pause,
-        Capability.SkipToNext,
-        Capability.SkipToPrevious,
-        Capability.SeekTo,
-      ],
-      compactCapabilities: [
-        Capability.Play,
-        Capability.Pause,
-        Capability.SkipToNext,
-      ],
-      progressUpdateEventInterval: 2,
-    });
-
     isSetup = true;
   } finally {
     return isSetup;

@@ -47,10 +47,9 @@ export const ModalProvider = ({children}) => {
   };
 
   const openModal = (modalType, modalProps) => {
-    console.log(modalType);
 
     if (modalType === 'AddToPlaylistModal') {
-      openAddToPlaylistModal;
+      openAddToPlaylistModal();
       closeCreatePlaylistModal();
       closeMusicModal();
     }

@@ -16,18 +16,16 @@ import {useModal} from '../context/ModalContext';
 const BottomPlayer = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  const {
-    playList,
-    currentSong,
-    isPlaying,
-    currentIndex,
-    progressTime,
-    totalLength,
-    loading,
-    error,
-  } = useSelector(state => state);
+
+  const isPlaying = useSelector(state => state.isPlaying);
+  const currentSong = useSelector(state => state.currentSong);
+  const progressTime = useSelector(state => state.progressTime);
+  const totalLength = useSelector(state => state.totalLength);
+  const loading = useSelector(state => state.loading);
+  const error = useSelector(state => state.error);
 
   const {openPlayer} = useModal();
+  
   if (!currentSong) {
     return null;
   }
@@ -79,7 +77,6 @@ const BottomPlayer = () => {
       alignItems: 'center',
     },
   };
-  console.log(currentSong);
   return (
     <SafeAreaView>
       <TouchableOpacity onPress={() => openPlayer()} activeOpacity={1}>
@@ -96,9 +93,7 @@ const BottomPlayer = () => {
               <View style={styles.songInfo}>
                 <Text style={styles.title}>{currentSong.title}</Text>
                 <Text style={styles.author}>
-                  {currentSong?.artists.data
-                    ? currentSong.artists?.data[0]?.name
-                    : currentSong.artists[0].name}
+                  {currentSong.artists[0]?.name}
                 </Text>
               </View>
               {error && <Text>Error loading song</Text>}
@@ -130,4 +125,4 @@ const BottomPlayer = () => {
   );
 };
 
-export default BottomPlayer;
+export default React.memo(BottomPlayer);

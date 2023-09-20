@@ -9,6 +9,7 @@ import {
   Dimensions,
   Animated,
   FlatList,
+  ImageBackground,
 } from 'react-native';
 import {useDispatch, useSelector, shallowEqual} from 'react-redux';
 import {Icon} from 'react-native-elements';
@@ -26,11 +27,15 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {seek} from '../playerFunctions';
 import BottomSheet from '@gorhom/bottom-sheet';
+import useSongPlaybackTracker from '../hook/useSongPlaybackTracker';
+import {logSongPlay, updateSongPlayViewed} from '../helpers/ApiHelper';
+import FastImage from 'react-native-fast-image';
+import useFetchData from '../useFetchData';
 
 const screenHeight = Dimensions.get('window').height;
 const screenWidth = Dimensions.get('window').width;
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
-
+const AnimatedImage = Animated.createAnimatedComponent(ImageBackground);
 const PlayerScreen = React.forwardRef((props, ref) => {
   const dispatch = useDispatch();
   const {
@@ -42,10 +47,24 @@ const PlayerScreen = React.forwardRef((props, ref) => {
     totalLength,
     shuffleMode,
     playMode,
-  } = useSelector(state => state, shallowEqual);
+  } = useSelector(
+    state => ({
+      playList: state.playList,
+      currentSong: state.currentSong,
+      currentIndex: state.currentIndex,
+      isPlaying: state.isPlaying,
+      progressTime: state.progressTime,
+      totalLength: state.totalLength,
+      shuffleMode: state.shuffleMode,
+      playMode: state.playMode,
+    }),
+    shallowEqual,
+  );
 
   const bottomSheetRef = useRef(null);
   const snapPoints = useMemo(() => ['100%'], []); // Adjust the minimized height to 60% or as needed.
+  const [historyId, setHistoryId] = useState(null);
+  const {logSong} = useFetchData();
 
   const flatListRef = useRef();
   const [songSwitching, setSongSwitching] = useState(false); // Add songSwitching flag
@@ -64,6 +83,29 @@ const PlayerScreen = React.forwardRef((props, ref) => {
     [dispatch],
   );
   const pan = useRef(new Animated.ValueXY()).current;
+  useEffect(() => {
+    // When a song starts playing
+    if (isPlaying && !historyId) {
+      logSong(1, currentSong.id).then(data => setHistoryId(data.id));
+    }
+  }, [isPlaying, currentSong, historyId]);
+
+  const {hasBeenViewed} = useSongPlaybackTracker(
+    isPlaying,
+    progressTime,
+    currentSong,
+  );
+
+  useEffect(() => {
+    // After the song has been played for 30 seconds
+    if (hasBeenViewed && historyId) {
+      updateSongPlayViewed(historyId);
+    }
+  }, [hasBeenViewed, historyId]);
+
+  useEffect(() => {
+    setHistoryId(null);
+  }, [currentSong]);
 
   useEffect(() => {
     if (flatListRef.current) {
@@ -83,11 +125,9 @@ const PlayerScreen = React.forwardRef((props, ref) => {
         const diff = Math.abs(newIndex - currentIndex);
         let songSwitched = false;
 
-        console.log(currentIndex);
         if (newIndex > currentIndex) {
           dispatch({type: NEXT_SONG});
         } else if (newIndex < currentIndex) {
-          console.log('back');
           dispatch({type: LAST_SONG});
         }
         setTimeout(() => {
@@ -120,7 +160,25 @@ const PlayerScreen = React.forwardRef((props, ref) => {
   }, [songSwitching]);
 
   const renderItem = useCallback(({item}) => <PlayerItem item={item} />, []);
+  const backgroundOpacity = useRef(new Animated.Value(1)).current;
 
+  useEffect(() => {
+    // Step 2: Animate on Song Change
+    Animated.sequence([
+      // Fade out
+      Animated.timing(backgroundOpacity, {
+        toValue: 0.9,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      // Fade in
+      Animated.timing(backgroundOpacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [currentSong]);
   if (!currentSong) {
     return null;
   }
@@ -130,14 +188,17 @@ const PlayerScreen = React.forwardRef((props, ref) => {
         ref={ref}
         index={0}
         enablePanDownToClose
-        snapPoints={snapPoints}
+        snapPoints={['100%']}
         handleComponent={null}>
-        <Animated.View
-          style={[
-            styles.container,
-            {transform: [{translateY: playerPosition}]},
-          ]}
-          pointerEvents={'auto'}>
+        <AnimatedImage
+          source={{uri: currentSong.cover.url}}
+          style={{
+            ...styles.container,
+            opacity: backgroundOpacity,
+            resizeMode: 'cover',
+            overlayColor: 'rgba(0, 0, 0, 0.9)',
+          }}
+          blurRadius={100}>
           <AnimatedFlatList
             ref={flatListRef}
             horizontal
@@ -169,31 +230,28 @@ const PlayerScreen = React.forwardRef((props, ref) => {
                 style={styles.artist}
                 numberOfLines={1}
                 ellipsizeMode="tail">
-                {currentSong?.artists.data
-                  ? currentSong.artists?.data[0]?.name
-                  : currentSong.artists[0].name}
+                {currentSong.artists[0].name}
               </Text>
             </View>
 
             <Slider
-              style={[
-                styles.slider,
-                {flexDirection: 'row', justifyContent: 'space-between'},
-              ]}
+              style={styles.slider}
               minimumValue={0}
               maximumValue={totalLength}
               value={progressTime}
               minimumTrackTintColor="#1DB954"
               maximumTrackTintColor="#FFFFFF"
               thumbTintColor="#1DB954"
+
               onSlidingComplete={value => seek(value, dispatch)}
+
             />
             <View style={styles.timeContainer}>
-              <Text style={[styles.time, {marginRight: 10}]}>
+              <Text style={styles.time}>
                 {Math.floor(progressTime / 60)}:
                 {(progressTime % 60).toFixed(0).padStart(2, '0')}
               </Text>
-              <Text style={[styles.time, {marginLeft: 10}]}>
+              <Text style={styles.time}>
                 {Math.floor(totalLength / 60)}:
                 {(totalLength % 60).toFixed(0).padStart(2, '0')}
               </Text>
@@ -247,7 +305,7 @@ const PlayerScreen = React.forwardRef((props, ref) => {
               </TouchableOpacity>
             </View>
           </View>
-        </Animated.View>
+        </AnimatedImage>
       </BottomSheet>
     </View>
   );
@@ -256,15 +314,8 @@ const PlayerScreen = React.forwardRef((props, ref) => {
 const PlayerItem = ({item}) => {
   const screenWidth = Dimensions.get('window').width;
   return (
-    <Animated.View
-      style={{
-        flex: 2,
-        width: screenWidth,
-        paddingHorizontal: screenWidth * 0, // reduce from 0.1 to 0.05 or even 0
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-      <Image source={{uri: item.cover.url}} style={styles.albumArt} />
+    <Animated.View style={styles.playerItemContainer}>
+      <FastImage source={{uri: item.cover.url}} style={styles.albumArt} />
     </Animated.View>
   );
 };
@@ -289,26 +340,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#121212',
   },
-
-  // Album Art and Player Item
   albumArt: {
     width: albumArtSize,
     height: albumArtSize,
-    marginTop: 50,
-
-    borderRadius: 10,
-
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 1,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
   },
-
-  // Text and Titles
   title: {
     marginHorizontal: 20,
     fontSize: 20,
@@ -323,8 +358,8 @@ const styles = StyleSheet.create({
   time: {
     color: '#fff',
   },
-
   slider: {
+    fontSize: 12,
     marginTop: 20,
     width: commonContentWidth,
     flexDirection: 'row',
@@ -337,8 +372,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: commonContentWidth,
   },
-
-  // Buttons
   buttons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -346,15 +379,18 @@ const styles = StyleSheet.create({
     marginTop: 30,
     width: commonContentWidth,
   },
-
-  // Body (Not sure where this is used in your component)
   body: {
     flex: 2,
-
     alignItems: 'center',
     justifyContent: 'flex-start',
     marginBottom: 40,
     marginTop: -25,
+  },
+  playerItemContainer: {
+    flex: 2,
+    width: screenDimension.width,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

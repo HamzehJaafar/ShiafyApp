@@ -5,7 +5,6 @@ import React from 'react';
 import {View, Text, StyleSheet, TouchableWithoutFeedback} from 'react-native';
 import FastImage from 'react-native-fast-image';
 import D from './utils/dimensions';
-import {Trans} from 'react-i18next';
 
 function numberWithCommas(x) {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -23,9 +22,7 @@ export default props => {
           ]}
         />
 
-        <Text style={styles.text}>
-          <Trans>{props.title}</Trans>
-        </Text>
+        <Text style={styles.text}>{props.title}</Text>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -35,8 +32,6 @@ const styles = StyleSheet.create({
   container: {
     margin: 8,
     marginLeft: 12,
-    paddingRight: 10,
-    paddingLeft: 10,
   },
 
   album: {

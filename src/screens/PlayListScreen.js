@@ -11,6 +11,7 @@ import MusicItem from '../components/MusicItem';
 import { useNavigation } from '@react-navigation/native';
 import { Icon } from 'react-native-elements';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import FastImage from 'react-native-fast-image';
 
 const PlaylistScreen = ({ route }) => {
   const { music, playlistTitle } = route.params;
@@ -28,14 +29,13 @@ const PlaylistScreen = ({ route }) => {
 
   const coverImage = filteredSongs[0]?.cover || null;
 
-  console.log(filteredSongs[0]?.cover)
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       <TouchableOpacity onPress={handleBackButton} style={styles.backButton}>
         <Icon name="arrow-back" color="#fff" size={28} />
       </TouchableOpacity>
       <View style={styles.header}>
-        {coverImage.url && <Image source={{uri: coverImage.url}} style={styles.coverImage} />}
+        {coverImage.url && <FastImage source={{uri: coverImage.url}} style={styles.coverImage} />}
         <View style={styles.playlistInfo}>
           <Text style={styles.playlistTitle}>{playlistTitle}</Text>
           <Text style={styles.trackInfo}>

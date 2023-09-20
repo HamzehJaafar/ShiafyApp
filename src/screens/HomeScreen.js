@@ -8,7 +8,7 @@ import {
   Dimensions,
   TouchableOpacity,
 } from 'react-native';
-import {useSelector} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
 import {useQuery} from 'react-query';
 import {Icon, Image} from 'react-native-elements';
 import PlaylistItem from '../playlist-item';
@@ -18,36 +18,75 @@ import SongItem from '../components/SongItem';
 import colors from '../utils/colors';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {removeToken} from '../helpers/TokenHelper';
+import Carousel from 'react-native-reanimated-carousel';
+import MusicCategories from '../components/MusicCategories';
+import useFetchData from '../useFetchData';
+import {POINT_SONG} from '../redux/actions';
+import FastImage from 'react-native-fast-image';
 const {width, height} = Dimensions.get('window');
 
 const HomeScreen = ({navigation, onSignOut, forYou}) => {
-  const {isPlaying} = useSelector(state => state);
+  const {currentSong} = useSelector(state => state);
+  const {recentPlaylist, recentPlaylistLoading, recentPlaylistError} =
+    useFetchData();
 
   const handleSignOut = async () => {
     onSignOut();
   };
+  const dispatch = useDispatch();
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView>
-        <View style={styles.headerContainer}>
-          <Text style={styles.titleHeader}>
-            بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
-          </Text>
+      <View style={[styles.headerContainer, styles.addPadding]}>
+        <Text style={styles.titleHeader}>
+          بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+        </Text>
+        <View style={styles.sideIcons}>
+          <Icon name="notifications" color="white" />
+          <Icon name="history" color="white" />
           <TouchableOpacity onPress={handleSignOut} style={styles.settingsIcon}>
             <Icon name="settings" color="white" />
           </TouchableOpacity>
         </View>
+      </View>
+      <ScrollView style={currentSong ? styles.scrollView : null}>
+        <Carousel
+          loop
+          autoPlay={true}
+          width={width}
+          height={width / 1.5}
+          mode="parallax"
+          modeConfig={{
+            parallaxScrollingScale: 0.9,
+            parallaxScrollingOffset: 80,
+          }}
+          itemWidth={width * 0.8}
+          spacing={16}
+          data={forYou?.playlists}
+          renderItem={({item}) => (
+            <View style={styles.carouselCard}>
+              {item.cover.url ? (
+                <FastImage
+                  source={{uri: item.cover.url}}
+                  style={styles.carouselImage}
+                />
+              ) : null}
+              <Text style={styles.carouselTitle}>{item.title}</Text>
+            </View>
+          )}
+        />
+        <MusicCategories />
+
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Trending Playlists</Text>
           <FlatList
             horizontal
-            data={forYou?.playlists?.data}
+            data={forYou?.playlists}
             renderItem={({item}) => (
               <PlaylistItem
                 onPress={() =>
                   navigation.navigate('Playlist', {
-                    music: item.songs.data,
+                    music: item.songs,
                     playlistTitle: item.title,
                     headerImage: {uri: item.cover.url},
                   })
@@ -60,49 +99,91 @@ const HomeScreen = ({navigation, onSignOut, forYou}) => {
             keyExtractor={item => item.id.toString()}
           />
         </View>
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Featured Artists</Text>
-          <FlatList
-            horizontal
-            data={forYou?.artists?.data}
-            renderItem={({item}) => (
-              <ArtistItem
-                source={{uri: item.profile_cover.url}}
-                artistName={item.name}
-                followers={item.followers}
-              />
-            )}
-            keyExtractor={item => item.id.toString()}
-          />
-        </View>
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Top Sounds</Text>
-          <FlatList
-            horizontal
-            data={forYou?.songs?.data}
-            renderItem={({item, index}) => (
-              <SongItem
-                song={item}
-                onPress={song =>
-                  navigation.navigate('Player', {
-                    musicData: forYou?.songs.data,
-                    song: index,
+        {!recentPlaylistLoading ? (
+          <>
+            <View style={styles.sectionContainer}>
+              <Text
+                onPress={() =>
+                  navigation.navigate('Playlist', {
+                    music: recentPlaylist,
+                    playlistTitle: 'Recent History',
                   })
                 }
+                style={styles.sectionTitle}>
+                Recently Played
+              </Text>
+              <FlatList
+                horizontal
+                data={recentPlaylist}
+                renderItem={({item, index}) => (
+                  <SongItem
+                    size="default" // or "small"
+                    song={item}
+                    key={index}
+                    onPress={song =>
+                      dispatch({
+                        type: POINT_SONG,
+                        playList: recentPlaylist,
+                        song: index,
+                      })
+                    }
+                  />
+                )}
+                keyExtractor={(item, index) => index}
               />
-            )}
-            keyExtractor={item => item.id.toString()}
-          />
-        </View>
+            </View>
+          </>
+        ) : null}
+
+        {!recentPlaylistLoading ? (
+          <>
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Top Played</Text>
+              <FlatList
+                horizontal
+                data={recentPlaylist}
+                renderItem={({item, index}) => (
+                  <SongItem
+                    size="default" // or "small"
+                    song={item}
+                    key={index}
+                    onPress={song =>
+                      dispatch({
+                        type: POINT_SONG,
+                        playList: recentPlaylist,
+                        song: index,
+                      })
+                    }
+                  />
+                )}
+                keyExtractor={(item, index) => index}
+              />
+            </View>
+          </>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = {
+  sideIcons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    paddingRight: 15,
+  },
+  addPadding: {
+    paddingHorizontal: width * 0.05, // Responsive padding
+  },
+  scrollView: {
+    marginBottom: 70,
+  },
   center: {
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 0, // Remove padding or adjust as needed
   },
   containerLoading: {
     flex: 1,
@@ -120,7 +201,7 @@ const styles = {
   container: {
     flex: 1,
     backgroundColor: colors.secondary,
-    padding: width * 0.05, // Responsive padding
+    marginBottom: 20,
   },
   headerContainer: {
     flexDirection: 'row',
@@ -133,11 +214,8 @@ const styles = {
     fontSize: width * 0.05, // Responsive fontSize
     fontFamily: 'Avenir Next', // Custom font
   },
-  settingsIcon: {
-    padding: 10, // Extra padding for easier touching
-  },
   sectionContainer: {
-    marginBottom: height * 0.04, // Responsive marginBottom
+    padding: width * 0.05, // Responsive padding
   },
   sectionTitle: {
     color: colors.white,
@@ -148,6 +226,25 @@ const styles = {
   error: {
     color: colors.lightGrey,
     fontSize: width * 0.04, // Responsive fontSize
+  },
+  carouselCard: {
+    flex: 1,
+    justifyContent: 'center',
+    borderRadius: 15,
+    overflow: 'hidden',
+  },
+
+  carouselImage: {
+    width: '100%',
+    height: '100%',
+  },
+  carouselTitle: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    color: colors.primary,
+    fontSize: width * 0.04,
+    fontFamily: 'Avenir Next',
   },
 };
 

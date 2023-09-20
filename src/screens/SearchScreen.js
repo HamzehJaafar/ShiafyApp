@@ -49,7 +49,7 @@ const SearchScreen = () => {
     setIsLoading(true);
     try {
       const results = await getSearch(searchTerm);
-      setSearchResults(results.data);
+      setSearchResults(results);
       setError(null);
     } catch (err) {
       setError(err.message);

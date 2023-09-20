@@ -74,7 +74,7 @@ const MusicItemModal = React.forwardRef((props, ref) => {
             <Image source={{uri: albumArt?.url}} style={styles.albumArtModal} />
             <Text style={styles.songTitleModal}>{title}</Text>
             <Text style={styles.artistModal}>
-              {artist?.data ? artist?.data[0]?.name : artist[0]?.name}
+              {artist[0]?.name}
             </Text>
             <TouchableOpacity
               style={styles.optionContainer}

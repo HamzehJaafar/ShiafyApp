@@ -35,7 +35,6 @@ export async function getSongsByGenre(genre) {
 
 export async function getSearch(query) {
   const token = await getToken();
-  console.log(token);
   const response = await fetch(
     `${API}/songs?populate[source][fields][0]=url&populate=artists&populate[cover][fields][0]=url&filters[$or][0][title][$containsi]=${query}&filters[$or][1][artists][name][$containsi]=${query}`,
     {
@@ -48,14 +47,12 @@ export async function getSearch(query) {
   const data = await response.json();
 
   // Use flattenObject function to flatten the data
-  const flattenedData = flattenData(data);
 
-  return flattenedData;
+  return data?.data;
 }
 
 export async function getForYou() {
   const token = await getToken();
-  console.log(token);
   const response = await fetch(
     `${API}/foryou?populate[songs][populate][source][fields][0]=url&populate[songs][populate][cover][fields][1]=url&populate[artists][populate][profile_cover][fields][0]=url&populate[playlists][populate][cover][fields][0]=url&populate[playlists][populate][songs][populate][source][fields][0]=url&populate[playlists][populate][songs][populate][cover][fields][0]=url&populate[playlists][populate][songs][populate][artists][fields][0]=*&populate[songs][populate][artists][fields][2]=*`,
     {
@@ -68,9 +65,8 @@ export async function getForYou() {
   const data = await response.json();
 
   // Use flattenObject function to flatten the data
-  const flattenedData = flattenData(data);
 
-  return flattenedData;
+  return data.data;
 }
 
 // Like a song
@@ -118,7 +114,7 @@ export async function unlikeSong(likeId) {
 export async function getLikedSongs() {
   const token = await getToken();
   const response = await fetch(
-    `${API}/likes?populate[song][populate][source][fields][0]=url&populate[song][populate][cover][fields][1]=url&filters[user][id][$eq]=1&populate[song][populate][artists][fields][2]=profile_cover`,
+    `${API}/likes?populate[song][populate][source][fields][0]=url&populate[song][populate][cover][fields][1]=url&filters[user][id][$eq]=1&populate[song][populate][artists][fields][0]=name`,
     {
       // Replace with logged in user's ID
       headers: {
@@ -179,4 +175,55 @@ function flattenData(data: any) {
   }
 
   return result;
+}
+
+export async function logSongPlay({userId, songId}, viewed = false) {
+  const token = await getToken();
+
+  if (!songId) {
+    throw new Error('SongId required');
+  }
+
+  const response = await fetch(`${API}/history`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `${BEARER} ${token}`,
+    },
+    body: JSON.stringify({
+      user: userId,
+      songId: songId,
+      playedAt: new Date().toISOString(),
+      viewed: viewed,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to log song play');
+  }
+
+  return await response.json();
+}
+
+export async function updateSongPlayViewed(historyId) {
+  const token = await getToken();
+
+  const response = await fetch(`${API}/history/${historyId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `${BEARER} ${token}`,
+    },
+    body: JSON.stringify({
+      data: {
+        viewed: true,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update song view');
+  }
+
+  return await response.json();
 }

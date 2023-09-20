@@ -193,7 +193,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.23,
     shadowRadius: 2.62,
-    elevation: 4,
   },
   buttonText: {
     fontSize: 16,
@@ -231,7 +230,6 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignSelf: 'center',
     marginTop: 20,
-    elevation: 5, // Shadow for Android
     shadowColor: '#1DB954', // Shadow for iOS
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,

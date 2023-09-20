@@ -100,3 +100,21 @@ export async function fetchPublicPlaylists() {
 
   return await response.json();
 }
+
+
+// 4. Fetch public playlists
+export async function getRecentPlaylist() {
+  const token = await getToken();
+  
+  const response = await fetch(`${API}/history/recent`, {
+    headers: {
+      Authorization: `${BEARER} ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch public playlists');
+  }
+
+  return await response.json();
+}

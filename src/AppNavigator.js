@@ -18,6 +18,7 @@ import {useModal} from './context/ModalContext';
 import BottomPlayer from './components/BottomPlayer';
 import {useBottomSheet} from '@gorhom/bottom-sheet';
 import {TouchableOpacity} from 'react-native-gesture-handler';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator();
 const RootStack = createStackNavigator();
@@ -65,12 +66,8 @@ const CustomTabBar = props => {
         bottom: 0,
         left: 0,
         right: 0,
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: -1},
-        shadowOpacity: 0.8,
-        shadowRadius: 15,
+        paddingTop: 10,
         gap: 3,
-        elevation: 5,// Adjust padding as needed
       }}>
       <BottomPlayer />
       <View
@@ -82,7 +79,6 @@ const CustomTabBar = props => {
           paddingBottom: 10,
           paddingTop: 10,
           justifyContent: 'space-around',
-          
         }}>
         {props.state.routes.map((route, index) => {
           const focused = index === props.state.index;
@@ -129,22 +125,11 @@ const MainTabNavigator = ({onSignOut, forYou}) => {
   const {openPlayer} = useModal();
 
   return (
-    <View style={{flex: 1}}>
+    <SafeAreaView
+      edges={['bottom']}
+      style={{flex: 1, backgroundColor: colors.darkGrey}}>
       <Tab.Navigator
         screenOptions={{headerShown: false}}
-        tabBarOptions={{
-          activeTintColor: colors.primary,
-          inactiveTintColor: colors.lightGrey,
-          style: {
-            borderTopWidth: 0,
-            backgroundColor: 'rgba(18, 18, 18, 0.95)', // Dark with some opacity
-            elevation: 5,
-          },
-          labelStyle: {
-            fontSize: 11,
-            marginBottom: 5,
-          },
-        }}
         tabBar={props => <CustomTabBar {...props} />}>
         <Tab.Screen
           name="Home"
@@ -198,16 +183,12 @@ const MainTabNavigator = ({onSignOut, forYou}) => {
           {props => <LibraryStackNavigator {...props} />}
         </Tab.Screen>
       </Tab.Navigator>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const AppNavigator = ({onSignOut, forYou}) => {
   const navigationRef = React.useRef();
-
-  React.useEffect(() => {
-    NavigationService.setTopLevelNavigator(navigationRef.current);
-  }, []);
 
   return (
     <RootStack.Navigator
