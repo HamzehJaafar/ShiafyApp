@@ -52,7 +52,6 @@ const HomeScreen = ({navigation, onSignOut, forYou}) => {
       <ScrollView style={currentSong ? styles.scrollView : null}>
         <Carousel
           loop
-          autoPlay={true}
           width={width}
           height={width / 1.5}
           mode="parallax"
@@ -65,7 +64,7 @@ const HomeScreen = ({navigation, onSignOut, forYou}) => {
           data={forYou?.playlists}
           renderItem={({item}) => (
             <View style={styles.carouselCard}>
-              {item.cover.url ? (
+              {item?.cover?.url ? (
                 <FastImage
                   source={{uri: item.cover.url}}
                   style={styles.carouselImage}
@@ -96,7 +95,7 @@ const HomeScreen = ({navigation, onSignOut, forYou}) => {
                 followers={item.followers}
               />
             )}
-            keyExtractor={item => item.id.toString()}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
           />
         </View>
         {!recentPlaylistLoading ? (
@@ -129,7 +128,7 @@ const HomeScreen = ({navigation, onSignOut, forYou}) => {
                     }
                   />
                 )}
-                keyExtractor={(item, index) => index}
+                keyExtractor={(item, index) => `${item.id}-${index}`}
               />
             </View>
           </>
@@ -156,7 +155,7 @@ const HomeScreen = ({navigation, onSignOut, forYou}) => {
                     }
                   />
                 )}
-                keyExtractor={(item, index) => index}
+                keyExtractor={(item, index) => `${item.id}-${index}`}
               />
             </View>
           </>

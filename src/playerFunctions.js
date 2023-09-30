@@ -16,6 +16,5 @@ export const playNext = async dispatch => {
 };
 
 export const seek = async (value, dispatch) => {
-  dispatch({type: PROGRESS, progressTime: value});
-  TrackPlayer.seekTo(value);
+  await TrackPlayer.seekTo(value);
 };

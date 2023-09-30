@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import {useDispatch, useSelector, shallowEqual} from 'react-redux';
 import {Icon} from 'react-native-elements';
-import Slider from '@react-native-community/slider';
+import {Slider} from '@miblanchard/react-native-slider';
 import {
   PAUSE,
   NEXT_SONG,
@@ -24,6 +24,8 @@ import {
   SHUFFLE_MODE,
   PROGRESS,
 } from '../redux/actions';
+import {debounce} from 'lodash';
+
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {seek} from '../playerFunctions';
 import BottomSheet from '@gorhom/bottom-sheet';
@@ -31,19 +33,24 @@ import useSongPlaybackTracker from '../hook/useSongPlaybackTracker';
 import {logSongPlay, updateSongPlayViewed} from '../helpers/ApiHelper';
 import FastImage from 'react-native-fast-image';
 import useFetchData from '../useFetchData';
+import TrackPlayer, {
+  State,
+  useProgress,
+} from 'react-native-track-player';
 
 const screenHeight = Dimensions.get('window').height;
 const screenWidth = Dimensions.get('window').width;
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 const AnimatedImage = Animated.createAnimatedComponent(ImageBackground);
 const PlayerScreen = React.forwardRef((props, ref) => {
+  const {position} = useProgress();
+
   const dispatch = useDispatch();
   const {
     playList,
     currentSong,
     currentIndex,
     isPlaying,
-    progressTime,
     totalLength,
     shuffleMode,
     playMode,
@@ -53,7 +60,6 @@ const PlayerScreen = React.forwardRef((props, ref) => {
       currentSong: state.currentSong,
       currentIndex: state.currentIndex,
       isPlaying: state.isPlaying,
-      progressTime: state.progressTime,
       totalLength: state.totalLength,
       shuffleMode: state.shuffleMode,
       playMode: state.playMode,
@@ -70,6 +76,48 @@ const PlayerScreen = React.forwardRef((props, ref) => {
   const [songSwitching, setSongSwitching] = useState(false); // Add songSwitching flag
   const playerOffsetX = useRef(new Animated.Value(0)).current;
   const playerPosition = useRef(new Animated.Value(0)).current;
+  const playbackTracker = useSongPlaybackTracker(
+    isPlaying,
+    position,
+    currentSong,
+  );
+
+
+
+  const [sliderValue, setSliderValue] = useState(position);
+  const [isSliding, setIsSliding] = useState(false);
+
+  useEffect(() => {
+    // When a song starts playing
+    if (!isSliding) {
+      setSliderValue(position);
+    }
+  }, [isSliding, position]);
+
+  const debouncedSeek = useCallback(
+    debounce(async value => {
+      setIsSliding(true); // Indicate that sliding has started
+      await TrackPlayer.seekTo(value[0]);
+    }, 0),
+    [dispatch],
+  );
+
+  useEffect(() => {
+    function handlePlaybackState(data) {
+      if (data.state === TrackPlayer.STATE_READY) {
+        setIsSliding(false);
+      }
+    }
+
+    const subscription = TrackPlayer.addEventListener(
+      'playback-state',
+      handlePlaybackState,
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   const togglePlayback = useCallback(() => dispatch({type: PAUSE}), [dispatch]);
   const fnextSong = useCallback(() => dispatch({type: NEXT_SONG}), [dispatch]);
@@ -90,10 +138,9 @@ const PlayerScreen = React.forwardRef((props, ref) => {
     }
   }, [isPlaying, currentSong, historyId]);
 
-  const {hasBeenViewed} = useSongPlaybackTracker(
-    isPlaying,
-    progressTime,
-    currentSong,
+  const hasBeenViewed = useMemo(
+    () => playbackTracker.hasBeenViewed,
+    [playbackTracker],
   );
 
   useEffect(() => {
@@ -105,6 +152,8 @@ const PlayerScreen = React.forwardRef((props, ref) => {
 
   useEffect(() => {
     setHistoryId(null);
+    setSliderValue(0);
+    setIsSliding(false);
   }, [currentSong]);
 
   useEffect(() => {
@@ -182,6 +231,7 @@ const PlayerScreen = React.forwardRef((props, ref) => {
   if (!currentSong) {
     return null;
   }
+
   return (
     <View pointerEvents="box-none" style={[styles.modal]}>
       <BottomSheet
@@ -194,11 +244,11 @@ const PlayerScreen = React.forwardRef((props, ref) => {
           source={{uri: currentSong.cover.url}}
           style={{
             ...styles.container,
-            opacity: backgroundOpacity,
+           // opacity: backgroundOpacity,
             resizeMode: 'cover',
             overlayColor: 'rgba(0, 0, 0, 0.9)',
           }}
-          blurRadius={100}>
+          blurRadius={70}>
           <AnimatedFlatList
             ref={flatListRef}
             horizontal
@@ -230,26 +280,27 @@ const PlayerScreen = React.forwardRef((props, ref) => {
                 style={styles.artist}
                 numberOfLines={1}
                 ellipsizeMode="tail">
-                {currentSong.artists[0].name}
+                {currentSong.artists[0]?.name}
               </Text>
             </View>
-
-            <Slider
-              style={styles.slider}
-              minimumValue={0}
-              maximumValue={totalLength}
-              value={progressTime}
-              minimumTrackTintColor="#1DB954"
-              maximumTrackTintColor="#FFFFFF"
-              thumbTintColor="#1DB954"
-
-              onSlidingComplete={value => seek(value, dispatch)}
-
-            />
+            <View style={{width: '80%'}}>
+              <Slider
+                style={styles.slider}
+                minimumValue={0}
+                maximumValue={totalLength}
+                value={sliderValue}
+                minimumTrackTintColor="#1DB954"
+                maximumTrackTintColor="#FFFFFF"
+                thumbTintColor="#1DB954"
+                onSlidingStart={value => setIsSliding(true)}
+                onValueChange={value => setSliderValue(value[0])}
+                onSlidingComplete={debouncedSeek} // Use the debounced function here
+              />
+            </View>
             <View style={styles.timeContainer}>
               <Text style={styles.time}>
-                {Math.floor(progressTime / 60)}:
-                {(progressTime % 60).toFixed(0).padStart(2, '0')}
+                {Math.floor(sliderValue / 60)}:
+                {(sliderValue % 60).toFixed(0).padStart(2, '0')}
               </Text>
               <Text style={styles.time}>
                 {Math.floor(totalLength / 60)}:
@@ -339,6 +390,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#121212',
+    alignItems: 'stretch',
   },
   albumArt: {
     width: albumArtSize,

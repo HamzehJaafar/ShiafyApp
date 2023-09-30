@@ -22,7 +22,7 @@ export default props => {
           ]}
         />
 
-        <Text style={styles.text}>{props.title}</Text>
+        <Text numberOfLines={1} style={styles.text}>{props.title}</Text>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -49,7 +49,8 @@ const styles = StyleSheet.create({
   },
 
   text: {
-    //fontSize: 10,
+    fontSize: 12,
+    width: (D.width * 4.2) / 12,
     color: 'white',
     fontWeight: '600',
     alignSelf: 'center',

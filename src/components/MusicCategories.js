@@ -1,30 +1,44 @@
 // components/MusicCategories.js
 
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, {useState} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 
 const categories = ['Quran', 'Latmiya', 'Nasheed', 'Dua', 'Podcasts'];
 
 const MusicCategories = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const navigation = useNavigation();
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollContainer}>
-      {categories.map((category) => (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.scrollContainer}>
+      {categories.map(category => (
         <TouchableOpacity
           key={category}
           style={[
             styles.category,
             selectedCategory === category && styles.selectedCategory,
           ]}
-          onPress={() => setSelectedCategory(category)}
-        >
+          onPress={() => {
+            //setSelectedCategory(category);
+            navigation.navigate('Category', {
+              categoryName: category,
+            });
+          }}>
           <Text
             style={[
               styles.categoryText,
               selectedCategory === category && styles.selectedCategoryText,
-            ]}
-          >
+            ]}>
             {category}
           </Text>
         </TouchableOpacity>
@@ -43,21 +57,21 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     borderWidth: 1,
     borderColor: 'transparent',
-    backgroundColor: 'rgba(0,0,0,0.1)',  // Adding a subtle background
+    backgroundColor: 'rgba(0,0,0,0.1)', // Adding a subtle background
     marginLeft: 8,
-    elevation: 5,  // For Android shadow
-    shadowColor: '#000',  // For iOS shadow
-    shadowOffset: { width: 0, height: 2 },
+    elevation: 5, // For Android shadow
+    shadowColor: '#000', // For iOS shadow
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.3,
     shadowRadius: 3,
   },
   selectedCategory: {
-    backgroundColor: '#1DB954',  // Spotify's highlight color
+    backgroundColor: '#1DB954', // Spotify's highlight color
   },
   categoryText: {
     color: 'white',
     fontWeight: 'bold',
-    fontSize: 16,  // Making the font size larger
+    fontSize: 16, // Making the font size larger
   },
   selectedCategoryText: {
     color: 'white',

@@ -86,7 +86,7 @@ const SearchScreen = () => {
     return (
       <FlatList
         data={searchResults}
-        keyExtractor={item => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         renderItem={({item, index}) => (
           <MusicItem
             id={item.id}

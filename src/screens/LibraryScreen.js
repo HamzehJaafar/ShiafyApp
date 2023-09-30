@@ -4,12 +4,12 @@ import {useNavigation} from '@react-navigation/native';
 import useFetchData from '../useFetchData';
 import {Icon, Image} from 'react-native-elements';
 import {SafeAreaView} from 'react-native-safe-area-context';
-
+import FastImage from 'react-native-fast-image';
 
 const LibraryScreen = () => {
   const navigation = useNavigation();
-  const { likedSongs, likedSongsLoading } = useFetchData();
-  const { privatePlaylists, privatePlaylistsLoading } = useFetchData();
+  const {likedSongs, likedSongsLoading} = useFetchData();
+  const {privatePlaylists, privatePlaylistsLoading} = useFetchData();
 
   let songs = [];
   if (likedSongs) {
@@ -26,8 +26,9 @@ const LibraryScreen = () => {
       </View>
 
       <FlatList
-        data={[{ type: 'likedSongs', data: songs }, ...privatePlaylists]}
-        renderItem={({ item }) => {
+        keyExtractor={(item, index) => `${item.id}-${index}`}
+        data={[{type: 'likedSongs', data: songs}, ...privatePlaylists]}
+        renderItem={({item}) => {
           if (item.type === 'likedSongs') {
             return (
               <TouchableOpacity
@@ -39,11 +40,20 @@ const LibraryScreen = () => {
                   });
                 }}>
                 <View style={styles.sectionLeft}>
-                  <Image source={require('../../assets/images/companylogo.png')} style={styles.sectionImage} />
+                  <FastImage
+                    source={
+                      item?.data[0]?.cover?.url
+                        ? {uri: item.data[0].cover.url}
+                        : require('../../assets/images/companylogo.png')
+                    }
+                    style={styles.sectionImage}
+                  />
                   <View style={styles.sectionTextContainer}>
-                    <Text style={styles.sectionTitle}>Likes</Text>
+                    <Text style={styles.sectionTitle}>Liked Tracks</Text>
                     <Text style={styles.sectionSubtitle}>
-                      {likedSongsLoading ? 'Loading...' : `${item.data.length} songs`}
+                      {likedSongsLoading
+                        ? 'Loading...'
+                        : `${item.data.length} tracks`}
                     </Text>
                   </View>
                 </View>
@@ -60,28 +70,35 @@ const LibraryScreen = () => {
                   });
                 }}>
                 <View style={styles.sectionLeft}>
-                  <Image
-                    source={item.coverPhoto ? { uri: item.coverPhoto } : require('../../assets/images/companylogo.png')}
+                  <FastImage
+                    source={
+                      item?.songs[0]?.cover?.url
+                        ? {uri: item.songs[0].cover.url}
+                        : require('../../assets/images/companylogo.png')
+                    }
                     style={styles.sectionImage}
                   />
                   <View style={styles.sectionTextContainer}>
                     <Text style={styles.sectionTitle}>{item.title}</Text>
                     <Text style={styles.sectionSubtitle}>
-                      {item.songs.length} songs
+                      {item.songs.length} tracks - Playlist
                     </Text>
                   </View>
                 </View>
-                <Icon style={styles.sectionIcon} name="keyboard-arrow-right" color="#bbb" />
+                <Icon
+                  style={styles.sectionIcon}
+                  name="keyboard-arrow-right"
+                  color="#bbb"
+                />
               </TouchableOpacity>
             );
           }
         }}
-        keyExtractor={(item, index) => (item.type ? item.type : item.id.toString())}
+
       />
     </SafeAreaView>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {
@@ -109,7 +126,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderRadius: 10,
-    backgroundColor: '#333',
     marginBottom: 10,
   },
   sectionLeft: {
@@ -117,20 +133,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionImage: {
-    width: 40,
-    height: 40,
+    width: 70,
+    height: 70,
     marginRight: 10,
   },
   sectionTextContainer: {
     marginLeft: 10,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
   },
   sectionSubtitle: {
-    fontSize: 16,
+    fontSize: 12,
     color: '#bbb',
   },
   sectionIcon: {

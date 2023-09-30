@@ -36,7 +36,7 @@ export async function getSongsByGenre(genre) {
 export async function getSearch(query) {
   const token = await getToken();
   const response = await fetch(
-    `${API}/songs?populate[source][fields][0]=url&populate=artists&populate[cover][fields][0]=url&filters[$or][0][title][$containsi]=${query}&filters[$or][1][artists][name][$containsi]=${query}`,
+    `${API}/songs?populate[source][fields][0]=url&populate[artists][0]=name&populate=artists&populate[cover][fields][0]=url&filters[$or][0][title][$containsi]=${query}&filters[$or][1][artists][name][$containsi]=${query}`,
     {
       headers: {
         Authorization: `${BEARER} ${token}`,
@@ -65,6 +65,22 @@ export async function getForYou() {
   const data = await response.json();
 
   // Use flattenObject function to flatten the data
+
+  return data.data;
+}
+
+export async function getQuranForYou() {
+  const token = await getToken();
+  const response = await fetch(
+    `${API}/quran?populate[data][populate][songs][populate][source][fields]=url&populate[data][populate][songs][populate][cover][fields]=url&populate[data][populate][playlists][populate][songs][populate][source][fields]=url&populate[data][populate][playlists][populate][songs][populate][cover][fields]=url&populate[data][populate][artists][populate][profile_cover][fields]=url&populate[data][populate][playlists][populate][songs][populate][artists][fields]=name&populate[data][populate][songs][populate][artists][fields]=name&populate[cover][fields]=url`,
+    {
+      headers: {
+        Authorization: `${BEARER} ${token}`,
+      },
+    },
+  );
+
+  const data = await response.json();
 
   return data.data;
 }

@@ -7,6 +7,8 @@ import {
   AppKilledPlaybackBehavior,
 } from 'react-native-track-player';
 import {playNext, playPrevious, seek} from './playerFunctions';
+import { getSongMetadata } from './helpers/storageHelper';
+import RNFS from 'react-native-fs';
 
 export const useTrackPlayer = () => {
   const {currentSong, isPlaying} = useSelector(state => ({
@@ -30,14 +32,23 @@ export const useTrackPlayer = () => {
       try {
         await TrackPlayer.reset();
         if (currentSong) {
+
+          const metadata = await getSongMetadata(currentSong.id);
+          const songUrl = metadata && metadata.localPath ? `file://${metadata.localPath}` : currentSong.source.url;
+
+          const fileExists = await RNFS.exists(songUrl);
+          console.log(`File exists at ${songUrl}: ${fileExists}`);
+          
           await TrackPlayer.add({
             id: currentSong.id,
-            url: currentSong.source.url,
+            url: songUrl,
             title: currentSong.title,
             artwork: currentSong.cover.url,
             artist: currentSong.artists[0]
               ? currentSong?.artists[0]?.name
               : 'unknown',
+          }).catch(error => {
+            console.error("Error adding track:", error);
           });
 
           TrackPlayer.play();
@@ -46,6 +57,10 @@ export const useTrackPlayer = () => {
               type: 'SET_LENGTH',
               totalLength: currentSong.duration,
             });
+          } else {
+            const duration = await TrackPlayer.getDuration();
+            dispatch({type: 'SET_LENGTH', totalLength: duration}); // might be a duplicate ?
+
           }
         }
       } catch (error) {
@@ -55,19 +70,6 @@ export const useTrackPlayer = () => {
 
     setupPlayer();
 
-    const progressInterval = setInterval(async () => {
-      const currentPosition = await TrackPlayer.getPosition();
-      dispatch({type: PROGRESS, progressTime: currentPosition});
-
-      const duration = await TrackPlayer.getDuration();
-      if (!currentSong?.duration) {
-        dispatch({type: 'SET_LENGTH', totalLength: duration}); // might be a duplicate ?
-      }
-    }, 1000);
-
-    return () => {
-      clearInterval(progressInterval);
-    };
   }, [currentSong, dispatch]);
 };
 

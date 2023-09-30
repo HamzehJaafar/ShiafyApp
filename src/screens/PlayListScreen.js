@@ -1,139 +1,265 @@
-import React, { useState } from 'react';
+import React, {useState, useRef, useEffect, useCallback} from 'react';
 import {
   StyleSheet,
   View,
   Text,
-  Image,
-  TouchableOpacity,
   FlatList,
+  TouchableOpacity,
+  Dimensions,
+  Animated,
+  ActivityIndicator,
 } from 'react-native';
+import {Icon} from 'react-native-elements';
 import MusicItem from '../components/MusicItem';
-import { useNavigation } from '@react-navigation/native';
-import { Icon } from 'react-native-elements';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {useNavigation} from '@react-navigation/native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import FastImage from 'react-native-fast-image';
+import {deleteSong, downloadSong} from '../helpers/downloadHelper';
+import {
+  deletePlaylistDownloadStatus,
+  deleteSongMetadata,
+  getSongMetadata,
+  isPlaylistDownloadedcheck,
+  markPlaylistAsDownloaded,
+  storeSongMetadata,
+} from '../helpers/storageHelper';
 
-const PlaylistScreen = ({ route }) => {
-  const { music, playlistTitle } = route.params;
+const {width} = Dimensions.get('window');
+const HEADER_HEIGHT = width * 0.6;
+
+const PlaylistScreen = ({route}) => {
+  const {music, playlistTitle} = route.params;
   const navigation = useNavigation();
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [currentSongIndex, setCurrentSongIndex] = useState(0);
+  const [cancelDownload, setCancelDownload] = useState(false);
+  const [isPlaylistDownloaded, setIsPlaylistDownloaded] = useState(false);
 
-  const [searchTerm, setSearchTerm] = useState('');
+  useEffect(() => {
+    const checkPlaylistStatus = async () => {
+      const downloaded = await isPlaylistDownloadedcheck(playlistTitle);
+      setIsPlaylistDownloaded(downloaded);
+    };
+    checkPlaylistStatus();
+  }, [music]);
+
+  const headerHeight = scrollY.interpolate({
+    inputRange: [0, HEADER_HEIGHT],
+    outputRange: [HEADER_HEIGHT, 60],
+    extrapolate: 'clamp',
+  });
+
+  const coverImageOpacity = scrollY.interpolate({
+    inputRange: [0, HEADER_HEIGHT - 60],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  const titleOpacity = scrollY.interpolate({
+    inputRange: [0, HEADER_HEIGHT - 100, HEADER_HEIGHT - 60],
+    outputRange: [0, 0, 1],
+    extrapolate: 'clamp',
+  });
 
   const handleBackButton = () => {
     navigation.goBack();
   };
 
-  const filteredSongs = music.filter(song =>
-    song.title?.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  const coverImage = filteredSongs[0]?.cover || null;
+  const deletePlaylist = async () => {
+    setIsDownloading(true);
+    for (const song of music) {
+      await deleteSong(song.id);
+      await deleteSongMetadata(song.id);
+    }
+    await deletePlaylistDownloadStatus(playlistTitle);
+    setIsDownloading(false);
+  };
+  const handleDownload = async () => {
+    setIsDownloading(true);
+  
+    const abortController = new AbortController();
+  
+    for (let i = 0; i < music.length; i++) {
+      setCurrentSongIndex(i);
+      const song = music[i];
+      const metadata = await getSongMetadata(song.id);
+      if (!metadata) {
+        try {
+          const localPath = await downloadSong(song.source.url, song.id, abortController.signal);
+          if (cancelDownload) {
+            console.log('Skipping metadata creation due to cancellation');
+            setCancelDownload(false);
+            break;
+          }
+          await storeSongMetadata(song.id, { ...song, localPath });
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            console.log('Download was aborted');
+            setCancelDownload(false);
+            break;
+          } else {
+            throw error;
+          }
+        }
+      }
+    }
+    setIsDownloading(false);
+  };
 
   const renderHeader = () => (
-    <View style={styles.headerContainer}>
+    <Animated.View style={[styles.headerContainer, {height: headerHeight}]}>
       <TouchableOpacity onPress={handleBackButton} style={styles.backButton}>
         <Icon name="arrow-back" color="#fff" size={28} />
       </TouchableOpacity>
-      <View style={styles.header}>
-        {coverImage.url && <FastImage source={{uri: coverImage.url}} style={styles.coverImage} />}
-        <View style={styles.playlistInfo}>
-          <Text style={styles.playlistTitle}>{playlistTitle}</Text>
-          <Text style={styles.trackInfo}>
-            playlist - {music.length} tracks
-          </Text>
-        </View>
-        <View style={styles.playControls}>
-          <TouchableOpacity>
+      <Animated.View style={{opacity: coverImageOpacity}}>
+        <FastImage
+          source={{uri: music[0]?.cover?.url}}
+          style={styles.coverImage}
+        />
+      </Animated.View>
+      <Animated.View
+        style={[styles.overlayTextContainer, {opacity: titleOpacity}]}>
+        <Text numberOfLines={1} style={styles.overlayText}>
+          {playlistTitle}
+        </Text>
+      </Animated.View>
+      <View style={styles.playControls}>
+        <TouchableOpacity
+  onPress={() => {
+    if (isDownloading) {
+      setCancelDownload(true);
+      setIsDownloading(false);
+    } else if (isPlaylistDownloaded) {
+      deletePlaylist();
+      setIsPlaylistDownloaded(false);
+    } else {
+      handleDownload();
+      setIsPlaylistDownloaded(true);
+    }
+          }}
+          style={styles.shuffleButton}>
+          {isDownloading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : isPlaylistDownloaded ? (
+            <Icon name="trash" type="font-awesome" color="#FFFFFF" size={20} />
+          ) : (
             <Icon
-              name={'shuffle'}
-              type="material"
+              name="download"
+              type="font-awesome"
               color="#FFFFFF"
               size={20}
             />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.playButton}>
-            <Icon name="play-arrow" type="material" color="#121212" size={30} />
-          </TouchableOpacity>
-        </View>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.shuffleButton}>
+          <Icon name="shuffle" type="material" color="#FFFFFF" size={20} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.playButton}>
+          <Icon name="play-arrow" type="material" color="#121212" size={30} />
+        </TouchableOpacity>
       </View>
-      
-    </View>
+    </Animated.View>
   );
+
+  const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
+  const renderItem = useCallback(
+    ({item, index}) => (
+      <MusicItem
+        id={item.id}
+        title={item.title}
+        artist={item.artists}
+        albumArt={item.cover}
+        musicData={music}
+        songIndex={index}
+        currentSongIndex={currentSongIndex}
+        isDownloading={isDownloading}
+      />
+    ),
+    [music, currentSongIndex, isDownloading],
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      <FlatList
-        data={filteredSongs}
-        keyExtractor={item => item.id}
-        renderItem={({ item, index }) => (
-          <MusicItem
-            id={item.id}
-            title={item.title}
-            artist={item.artists}
-            albumArt={item.cover}
-            musicData={music}
-            songIndex={index}
-          />
+      <AnimatedFlatList
+        getItemLayout={(data, index) => ({
+          length: 50,
+          offset: 50 * index,
+          index,
+        })}
+        onScroll={Animated.event(
+          [{nativeEvent: {contentOffset: {y: scrollY}}}],
+          {useNativeDriver: false},
         )}
+        data={music}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
+        renderItem={renderItem}
         ListHeaderComponent={renderHeader}
+        stickyHeaderIndices={[0]}
+        scrollEventThrottle={1}
+        initialNumToRender={30}
       />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#121212',
-  },
   headerContainer: {
-    backgroundColor: '#1b1b1b',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-  },
-  header: {
-    flexDirection: 'row',
+    width: width,
+    height: HEADER_HEIGHT,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
+    backgroundColor: '#1b1b1b',
+    padding: 25,
   },
   backButton: {
-    alignSelf: 'flex-start',
-    marginBottom: 10,
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 1,
   },
   coverImage: {
-    width: 80,
-    height: 80,
+    width: width * 0.5,
+    height: width * 0.5,
     borderRadius: 10,
-    marginRight: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    marginBottom: 15,
   },
-  playlistInfo: {
-    flex: 1,
+  overlayTextContainer: {
+    position: 'absolute',
+    top: 10,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  playlistTitle: {
-    fontSize: 20,
-    color: '#FFF',
+  overlayText: {
+    fontSize: 14,
     fontWeight: 'bold',
-  },
-  trackInfo: {
-    fontSize: 16,
-    color: '#AAA',
-    fontWeight: '300',
+    color: 'white',
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: {width: 0, height: 2},
+    textShadowRadius: 10,
   },
   playControls: {
     flexDirection: 'row',
-    alignItems: 'center',
+    position: 'absolute',
+    bottom: -10,
+    right: 15,
+    gap: 10,
   },
   playButton: {
     backgroundColor: '#FFF',
     borderRadius: 25,
     marginLeft: 10,
-    padding: 5,
+  },
+  shuffleButton: {
+    marginTop: 10,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: '#121212',
   },
 });
-
 
 export default PlaylistScreen;

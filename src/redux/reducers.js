@@ -28,6 +28,7 @@ export default function (state, action) {
       progressTime: 0,
       shuffleMode: false,
       playMode: 'loop',
+      isSliding: false,
       isPlaying: false,
       isChanging: false,
       totalLength: 1,
@@ -158,6 +159,11 @@ export default function (state, action) {
         progressTime: Math.floor(action.time),
       };
     }
+    case 'TOGGLE_SLIDING':
+      return {
+        ...state,
+        isSliding: action.payload,
+      };
     default:
       return state;
   }

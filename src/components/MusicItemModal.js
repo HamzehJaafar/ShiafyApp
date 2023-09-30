@@ -18,7 +18,7 @@ const MusicItemModal = React.forwardRef((props, ref) => {
     // Check if the song is liked
     if (!likedSongsLoading) {
       likedSongs?.data.forEach(song => {
-        if (song.song.id === songId) {
+        if (song.id === songId) {
           setIsLiked(song.id);
         }
       });

@@ -59,7 +59,7 @@ function TopLevelNavigator() {
     setUser(null);
   };
 
-  if (isLoading || songsLoading || forYouLoading) {
+  if (forYouLoading) {
     return <SplashScreen />;
   }
 

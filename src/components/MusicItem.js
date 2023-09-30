@@ -1,25 +1,45 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import {Icon} from 'react-native-elements';
-
-import {useDispatch, } from 'react-redux';
+import {useDispatch} from 'react-redux';
 import {POINT_SONG, PROGRESS} from '../redux/actions';
 import {useModal} from '../context/ModalContext';
+import {getSongMetadata} from '../helpers/storageHelper';
 
-const MusicItem = ({id, title, artist, musicData, songIndex, albumArt}) => {
+const MusicItem = ({
+  id,
+  title,
+  artist,
+  musicData,
+  songIndex,
+  albumArt,
+  currentSongIndex,
+  isDownloading,
+}) => {
   const dispatch = useDispatch();
   const {openModal, closeModal} = useModal();
+  const [isDownloaded, setIsDownloaded] = useState(false);
 
-  const handlePress = () => {
+  useEffect(() => {
+    const checkDownloaded = async () => {
+      const metadata = await getSongMetadata(id);
+      setIsDownloaded(!!metadata);
+    };
+    checkDownloaded();
+  }, [id]);
+
+  const handlePress = async () => {
     dispatch({type: POINT_SONG, playList: musicData, song: songIndex});
     dispatch({type: PROGRESS, progressTime: 0});
   };
+
   const handleMoreOptions = () => {
     openModal('MusicItemModal', {
       songId: id,
@@ -37,12 +57,19 @@ const MusicItem = ({id, title, artist, musicData, songIndex, albumArt}) => {
           <Image source={albumArt} style={styles.albumArt} />
         </View>
       )}
-      
       <View style={styles.textContainer}>
         <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
           {title}
         </Text>
-        <Text style={styles.artist}>{artist[0]?.name}</Text>
+        <View style={styles.artistContainer}>
+          {isDownloaded && (
+            <Icon name={'done'} type="material" color="green" size={20} />
+          )}
+          {isDownloading && !isDownloaded && (
+            <ActivityIndicator color="green" size="small" />
+          )}
+          <Text style={styles.artist}>{artist ? artist[0].name : null}</Text>
+        </View>
       </View>
       <TouchableOpacity style={styles.dots} onPress={handleMoreOptions}>
         <Icon name="ellipsis-v" type="font-awesome" color="#517fa4" />
@@ -79,9 +106,17 @@ const styles = StyleSheet.create({
     color: '#999',
   },
   dots: {
+    flexDirection: 'row',
+    gap: 20,
     paddingLeft: 25,
     paddingRight: 25,
   },
+
+  artistContainer: {
+    paddingTop: 10,
+    flexDirection: 'row',
+    gap: 5,
+  },
 });
 
-export default MusicItem;
+export default React.memo(MusicItem);

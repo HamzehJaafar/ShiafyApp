@@ -24,7 +24,7 @@ const SongItem = ({song, onPress, size = 'default'}) => {
       />
       <View style={styles.songDetailsContainer}>
         <Text numberOfLines={1} style={styles.songTitle}>{song?.title}</Text>
-        <Text numberOfLines={3} ellipsizeMode='tail' style={styles.songGenre}>{song?.genre} - {song?.artists[0].name}</Text>
+        <Text numberOfLines={3} ellipsizeMode='tail' style={styles.songGenre}>{song?.genre} - {song?.artists[0]?.name}</Text>
       </View>
     </TouchableOpacity>
   );

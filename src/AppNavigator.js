@@ -19,6 +19,7 @@ import BottomPlayer from './components/BottomPlayer';
 import {useBottomSheet} from '@gorhom/bottom-sheet';
 import {TouchableOpacity} from 'react-native-gesture-handler';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import CategoryScreen from './screens/categories/CategoryScreen';
 
 const Tab = createBottomTabNavigator();
 const RootStack = createStackNavigator();
@@ -33,6 +34,7 @@ const HomeStackNavigator = ({onSignOut, forYou}) => (
       {props => <HomeScreen {...props} forYou={forYou} onSignOut={onSignOut} />}
     </HomeStack.Screen>
     <HomeStack.Screen name="Playlist" component={PlaylistScreen} />
+    <HomeStack.Screen name="Category" component={CategoryScreen} />
   </HomeStack.Navigator>
 );
 
@@ -197,6 +199,8 @@ const AppNavigator = ({onSignOut, forYou}) => {
         presentation: 'modal',
         cardStyle: {backgroundColor: 'transparent'},
       }}>
+
+
       <RootStack.Screen name="Main">
         {props => (
           <MainTabNavigator

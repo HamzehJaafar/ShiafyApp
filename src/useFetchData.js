@@ -2,28 +2,67 @@ import {useMutation, useQuery, useQueryClient} from 'react-query';
 import {
   getForYou,
   getLikedSongs,
+  getQuranForYou,
   likeSong,
   logSongPlay,
   unlikeSong,
 } from './helpers/ApiHelper';
 import {fetchPrivatePlaylistsOfUser, getRecentPlaylist} from './api/playlist';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+
+const withCache = (key, asyncFn) => async (...args) => {
+  try {
+    const data = await asyncFn(...args);
+    await AsyncStorage.setItem(key, JSON.stringify(data)); // Cache the data
+    return data;
+  } catch (error) {
+    // If there's an error (e.g., no network), try to get the cached data
+    const cachedData = await AsyncStorage.getItem(key);
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+    throw error; // If there's no cached data, throw the error
+  }
+};
+
+
 
 const useFetchData = user => {
+
   const queryClient = useQueryClient();
+
+  const getCachedForYou = withCache('cachedForYou', getForYou);
+  const getCachedQuranForYou = withCache('cachedQuranForYou', getQuranForYou);
+
+  const getCachedLikedSongs = withCache('cachedLikedSongs', getLikedSongs);
+  const getCachedPrivatePlaylists = withCache('cachedPrivatePlaylists', fetchPrivatePlaylistsOfUser);
+  const getCachedRecentPlaylist = withCache('cachedRecentPlaylist', getRecentPlaylist);
+
 
   const {
     data: forYou,
     isLoading: forYouLoading,
     isError: forYouError,
-  } = useQuery('getForYou', getForYou, {
+  } = useQuery('getForYou', getCachedForYou, {
     enabled: !!user,
   });
+
+
+  const {
+    data: quranForYou,
+    isLoading: quranForYouLoading,
+    isError: quranForYouError,
+  } = useQuery('getQuranForYou', getCachedQuranForYou, {
+    enabled: !!user,
+  });
+
 
   const {
     data: likedSongs,
     isLoading: likedSongsLoading,
     isError: likedSongsError,
-  } = useQuery('getLikedSongs', getLikedSongs, {
+  } = useQuery('getLikedSongs', getCachedLikedSongs, {
     enabled: !!user,
   });
 
@@ -71,7 +110,7 @@ const useFetchData = user => {
     data: privatePlaylists,
     isLoading: privatePlaylistsLoading,
     isError: privatePlaylistsError,
-  } = useQuery('getPrivatePlaylists', fetchPrivatePlaylistsOfUser, {
+  } = useQuery('getPrivatePlaylists', getCachedPrivatePlaylists, {
     enabled: !!user,
   });
 
@@ -79,7 +118,7 @@ const useFetchData = user => {
     data: recentPlaylist,
     isLoading: recentPlaylistLoading,
     isError: recentPlaylistError,
-  } = useQuery('getRecentPlaylist', getRecentPlaylist, {
+  } = useQuery('getRecentPlaylist', getCachedRecentPlaylist, {
     enabled: !!user,
   });
 
@@ -98,6 +137,9 @@ const useFetchData = user => {
     forYou,
     forYouLoading,
     forYouError,
+    quranForYou,
+    quranForYouLoading,
+    quranForYouError,
     likedSongs,
     likedSongsLoading,
     likedSongsError,
