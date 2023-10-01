@@ -27,6 +27,7 @@ import SplashScreen from './screens/SplashScreen';
 import {MusicDataProvider} from './context/MusicDataContext';
 import ModalContext, {ModalProvider} from './context/ModalContext';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {DownloadProvider} from './context/DownloadContext';
 
 LogBox.ignoreLogs([
   'Sending `playback-state` with no listeners registered',
@@ -97,9 +98,11 @@ function MainPage({t}) {
             <MenuProvider>
               <NetworkProvider>
                 <AuthProvider>
-                  <NavigationContainer>
-                    <TopLevelNavigator />
-                  </NavigationContainer>
+                  <DownloadProvider>
+                    <NavigationContainer>
+                      <TopLevelNavigator />
+                    </NavigationContainer>
+                  </DownloadProvider>
                 </AuthProvider>
               </NetworkProvider>
             </MenuProvider>

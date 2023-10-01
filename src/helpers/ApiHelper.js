@@ -53,6 +53,8 @@ export async function getSearch(query) {
 
 export async function getForYou() {
   const token = await getToken();
+
+  console.log(token)
   const response = await fetch(
     `${API}/foryou?populate[songs][populate][source][fields][0]=url&populate[songs][populate][cover][fields][1]=url&populate[artists][populate][profile_cover][fields][0]=url&populate[playlists][populate][cover][fields][0]=url&populate[playlists][populate][songs][populate][source][fields][0]=url&populate[playlists][populate][songs][populate][cover][fields][0]=url&populate[playlists][populate][songs][populate][artists][fields][0]=*&populate[songs][populate][artists][fields][2]=*`,
     {

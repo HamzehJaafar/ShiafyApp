@@ -1,4 +1,10 @@
-import React, {useState, useRef, useEffect, useCallback} from 'react';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useContext,
+} from 'react';
 import {
   StyleSheet,
   View,
@@ -14,7 +20,7 @@ import MusicItem from '../components/MusicItem';
 import {useNavigation} from '@react-navigation/native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import FastImage from 'react-native-fast-image';
-import {deleteSong, downloadSong} from '../helpers/downloadHelper';
+import {deleteSong, cancelCurrentDownload, cancelDownloadController, downloadSong, handleDownloadQueue} from '../helpers/downloadHelper';
 import {
   deletePlaylistDownloadStatus,
   deleteSongMetadata,
@@ -23,6 +29,7 @@ import {
   markPlaylistAsDownloaded,
   storeSongMetadata,
 } from '../helpers/storageHelper';
+import {DownloadContext} from '../context/DownloadContext';
 
 const {width} = Dimensions.get('window');
 const HEADER_HEIGHT = width * 0.6;
@@ -30,11 +37,31 @@ const HEADER_HEIGHT = width * 0.6;
 const PlaylistScreen = ({route}) => {
   const {music, playlistTitle} = route.params;
   const navigation = useNavigation();
+  const {state, dispatch} = useContext(DownloadContext);
+
   const scrollY = useRef(new Animated.Value(0)).current;
   const [isDownloading, setIsDownloading] = useState(false);
-  const [currentSongIndex, setCurrentSongIndex] = useState(0);
+  const [downloadingSongsIndices, setDownloadingSongsIndices] = useState([]);
   const [cancelDownload, setCancelDownload] = useState(false);
   const [isPlaylistDownloaded, setIsPlaylistDownloaded] = useState(false);
+
+  useEffect(() => {
+    const activeDownloads = state.downloads.filter(
+      download => download.playlistTitle === playlistTitle,
+    );
+    if (activeDownloads.length > 0) {
+      setIsDownloading(true);
+      setDownloadingSongsIndices(activeDownloads.map(ad => ad.songIndex));
+    } else {
+      setIsDownloading(false);
+      setDownloadingSongsIndices([]);
+    }
+  }, [state.downloads]);
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    await handleDownloadQueue(music, playlistTitle, dispatch, setIsDownloading, setCancelDownload);
+  };
 
   useEffect(() => {
     const checkPlaylistStatus = async () => {
@@ -75,37 +102,6 @@ const PlaylistScreen = ({route}) => {
     await deletePlaylistDownloadStatus(playlistTitle);
     setIsDownloading(false);
   };
-  const handleDownload = async () => {
-    setIsDownloading(true);
-  
-    const abortController = new AbortController();
-  
-    for (let i = 0; i < music.length; i++) {
-      setCurrentSongIndex(i);
-      const song = music[i];
-      const metadata = await getSongMetadata(song.id);
-      if (!metadata) {
-        try {
-          const localPath = await downloadSong(song.source.url, song.id, abortController.signal);
-          if (cancelDownload) {
-            console.log('Skipping metadata creation due to cancellation');
-            setCancelDownload(false);
-            break;
-          }
-          await storeSongMetadata(song.id, { ...song, localPath });
-        } catch (error) {
-          if (error.name === 'AbortError') {
-            console.log('Download was aborted');
-            setCancelDownload(false);
-            break;
-          } else {
-            throw error;
-          }
-        }
-      }
-    }
-    setIsDownloading(false);
-  };
 
   const renderHeader = () => (
     <Animated.View style={[styles.headerContainer, {height: headerHeight}]}>
@@ -126,17 +122,18 @@ const PlaylistScreen = ({route}) => {
       </Animated.View>
       <View style={styles.playControls}>
         <TouchableOpacity
-  onPress={() => {
-    if (isDownloading) {
-      setCancelDownload(true);
-      setIsDownloading(false);
-    } else if (isPlaylistDownloaded) {
-      deletePlaylist();
-      setIsPlaylistDownloaded(false);
-    } else {
-      handleDownload();
-      setIsPlaylistDownloaded(true);
-    }
+          onPress={() => {
+            if (isDownloading) {
+              cancelCurrentDownload();
+              setCancelDownload(true);
+              setIsDownloading(false);
+            } else if (isPlaylistDownloaded) {
+              deletePlaylist();
+              setIsPlaylistDownloaded(false);
+            } else {
+              handleDownload();
+              setIsPlaylistDownloaded(true);
+            }
           }}
           style={styles.shuffleButton}>
           {isDownloading ? (
@@ -172,11 +169,9 @@ const PlaylistScreen = ({route}) => {
         albumArt={item.cover}
         musicData={music}
         songIndex={index}
-        currentSongIndex={currentSongIndex}
-        isDownloading={isDownloading}
       />
     ),
-    [music, currentSongIndex, isDownloading],
+    [music],
   );
 
   return (
@@ -202,6 +197,7 @@ const PlaylistScreen = ({route}) => {
     </SafeAreaView>
   );
 };
+
 
 const styles = StyleSheet.create({
   headerContainer: {

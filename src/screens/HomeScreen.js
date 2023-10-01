@@ -85,6 +85,7 @@ const HomeScreen = ({navigation, onSignOut, forYou}) => {
               <PlaylistItem
                 onPress={() =>
                   navigation.navigate('Playlist', {
+                    id: item.id,
                     music: item.songs,
                     playlistTitle: item.title,
                     headerImage: {uri: item.cover.url},

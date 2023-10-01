@@ -1,17 +1,11 @@
-import React, {useEffect, useState} from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-} from 'react-native';
-import {Icon} from 'react-native-elements';
-import {useDispatch} from 'react-redux';
-import {POINT_SONG, PROGRESS} from '../redux/actions';
-import {useModal} from '../context/ModalContext';
-import {getSongMetadata} from '../helpers/storageHelper';
+import React, { useEffect, useState, useContext } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { Icon } from 'react-native-elements';
+import { useDispatch } from 'react-redux';
+import { POINT_SONG, PROGRESS } from '../redux/actions';
+import { useModal } from '../context/ModalContext';
+import { getSongMetadata } from '../helpers/storageHelper';
+import { DownloadContext } from '../context/DownloadContext';
 
 const MusicItem = ({
   id,
@@ -20,11 +14,11 @@ const MusicItem = ({
   musicData,
   songIndex,
   albumArt,
-  currentSongIndex,
-  isDownloading,
 }) => {
   const dispatch = useDispatch();
-  const {openModal, closeModal} = useModal();
+  const { openModal } = useModal();
+  const { state } = useContext(DownloadContext);
+
   const [isDownloaded, setIsDownloaded] = useState(false);
 
   useEffect(() => {
@@ -36,8 +30,8 @@ const MusicItem = ({
   }, [id]);
 
   const handlePress = async () => {
-    dispatch({type: POINT_SONG, playList: musicData, song: songIndex});
-    dispatch({type: PROGRESS, progressTime: 0});
+    dispatch({ type: POINT_SONG, playList: musicData, song: songIndex });
+    dispatch({ type: PROGRESS, progressTime: 0 });
   };
 
   const handleMoreOptions = () => {
@@ -46,9 +40,10 @@ const MusicItem = ({
       title,
       artist,
       albumArt,
-      closeModal, // Pass the closeModal function as a prop to the modal
     });
   };
+
+  const isSongDownloading = state.downloads.some(download => download.id === id);
 
   return (
     <TouchableOpacity onPress={handlePress} style={styles.container}>
@@ -65,7 +60,7 @@ const MusicItem = ({
           {isDownloaded && (
             <Icon name={'done'} type="material" color="green" size={20} />
           )}
-          {isDownloading && !isDownloaded && (
+          {isSongDownloading && (
             <ActivityIndicator color="green" size="small" />
           )}
           <Text style={styles.artist}>{artist ? artist[0].name : null}</Text>
@@ -111,7 +106,6 @@ const styles = StyleSheet.create({
     paddingLeft: 25,
     paddingRight: 25,
   },
-
   artistContainer: {
     paddingTop: 10,
     flexDirection: 'row',
