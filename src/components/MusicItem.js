@@ -6,6 +6,7 @@ import { POINT_SONG, PROGRESS } from '../redux/actions';
 import { useModal } from '../context/ModalContext';
 import { getSongMetadata } from '../helpers/storageHelper';
 import { DownloadContext } from '../context/DownloadContext';
+import { downloadSong } from '../helpers/downloadHelper';
 
 const MusicItem = ({
   id,
@@ -20,6 +21,12 @@ const MusicItem = ({
   const { state } = useContext(DownloadContext);
 
   const [isDownloaded, setIsDownloaded] = useState(false);
+
+
+
+  const handleDownload = async () => {
+    await downloadSong(musicData[songIndex].source.url, id);
+  };
 
   useEffect(() => {
     const checkDownloaded = async () => {
@@ -68,6 +75,9 @@ const MusicItem = ({
       </View>
       <TouchableOpacity style={styles.dots} onPress={handleMoreOptions}>
         <Icon name="ellipsis-v" type="font-awesome" color="#517fa4" />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={handleDownload}>
+        <Icon name="download" type="font-awesome" color="#517fa4" />
       </TouchableOpacity>
     </TouchableOpacity>
   );

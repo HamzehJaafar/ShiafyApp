@@ -41,7 +41,7 @@ export const handleDownloadQueue = async (music, playlistTitle, dispatch, setIsD
     if (!metadata) {
       dispatch({
         type: 'START_DOWNLOAD',
-        payload: { playlistTitle, songIndex: i },
+        payload: { id: playlistTitle, songIndex: i },
       });
       try {
         const localPath = await downloadSong(song.source.url, song.id);
