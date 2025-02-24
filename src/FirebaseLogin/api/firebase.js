@@ -11,7 +11,7 @@ import {
 import {getDatabase} from 'firebase/database';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyC-Wva6vKXxyogpv72M8OcjHiUvProChlc',
+  apiKey: 'AIzaSyC-Wva6vKXxyogpv72M8OcjHiUvProChl',
   authDomain: 'muslimsound-6f7be.firebaseapp.com',
   databaseURL: 'https://muslimsound-6f7be.firebaseio.com',
   projectId: 'muslimsound-6f7be',
